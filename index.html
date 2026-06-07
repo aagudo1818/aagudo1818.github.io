@@ -1,12 +1,389 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>Mallorca Explorer PRO</title>
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  --sand:   #f5efe6;
+  --ocean:  #1a6b7c;
+  --teal:   #2a9d8f;
+  --coral:  #e76f51;
+  --gold:   #e9c46a;
+  --dark:   #1a2332;
+  --text:   #2d3748;
+  --muted:  #718096;
+  --card-bg:#ffffff;
+  --radius: 16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--sand);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg, var(--ocean) 0%, var(--dark) 100%);
+  color: white;
+  padding: 20px 16px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+}
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  letter-spacing: -0.5px;
+}
+.header .sub {
+  font-size: 12px;
+  opacity: .65;
+  margin-top: 2px;
+}
+.header-stats {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+}
+.stat {
+  background: rgba(255,255,255,.12);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── MAP ── */
+#map-wrap {
+  padding: 12px 12px 0;
+}
+#map {
+  height: 220px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+
+/* ── SEARCH + FILTERS ── */
+.controls {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-box {
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  padding: 12px 16px 12px 40px;
+  border-radius: 50px;
+  border: 2px solid transparent;
+  background: white;
+  font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  outline: none;
+  transition: border-color .2s;
+}
+.search-box input:focus { border-color: var(--teal); }
+.search-box .icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+.filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+.filter-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 50px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  color: var(--text);
+}
+.filter-btn.active {
+  background: var(--ocean);
+  border-color: var(--ocean);
+  color: white;
+}
+.filter-btn:active { transform: scale(.96); }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap {
+  padding: 0 12px 8px;
+}
+.progress-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+.progress-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 50px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--ocean));
+  border-radius: 50px;
+  transition: width .6s ease;
+}
+
+/* ── GRID ── */
+.grid {
+  padding: 0 12px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── CARD ── */
+.card-item {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 10px rgba(0,0,0,.07);
+  overflow: hidden;
+  transition: box-shadow .25s;
+}
+.card-item.open {
+  box-shadow: 0 8px 30px rgba(0,0,0,.14);
+}
+.card-item.visited .card-header {
+  opacity: .6;
+}
+
+/* ── CARD HEADER ── */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.card-header:active { background: #f7f9fc; }
+
+.check-wrap {
+  flex-shrink: 0;
+}
+.check-wrap input[type=checkbox] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--teal);
+  cursor: pointer;
+}
+
+.card-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.veg-dot {
+  width: 8px;
+  height: 8px;
+  background: #48bb78;
+  border-radius: 50%;
+  display: none;
+}
+.has-veg .veg-dot { display: block; }
+
+.chevron {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform .3s;
+}
+.card-item.open .chevron { transform: rotate(180deg); }
+
+/* ── CARD BODY ── */
+.card-body {
+  display: none;
+  padding: 0 14px 14px;
+}
+.card-item.open .card-body { display: block; }
+
+.desc-text {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 12px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 10px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+
+.badges {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.badge {
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f5f8ff;
+  line-height: 1.4;
+  border-left: 3px solid var(--ocean);
+}
+
+.badge.rest {
+  background: #fff8f3;
+  border-left-color: var(--coral);
+}
+
+.badge.veg-badge {
+  background: #f0fff4;
+  border-left-color: #48bb78;
+}
+
+.badge.michelin {
+  background: #fff9e6;
+  border-left-color: var(--gold);
+}
+
+.empty-veg {
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.empty-state .big { font-size: 40px; margin-bottom: 10px; }
+
+/* ── LOADING ── */
+.loader {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.loader .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--ocean);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--dark);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 50px;
+  font-size: 13px;
+  z-index: 9999;
+  transition: transform .3s;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏝️ Mallorca Explorer PRO</h1>
+  <div class="sub">For Jasmin &amp; Adri 🌿</div>
+  <div class="header-stats">
+    <div class="stat" id="stat-total">— municipios</div>
+    <div class="stat" id="stat-visited">— visitados</div>
+    <div class="stat" id="stat-veg">— con opciones 🥗</div>
+  </div>
+</div>
+
+<div id="map-wrap">
+  <div id="map"></div>
+</div>
+
+<div class="controls">
+  <div class="search-box">
+    <span class="icon">🔍</span>
+    <input type="text" id="search" placeholder="Buscar municipio…" oninput="applyFilters()"/>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter(this,'all')">Todos</button>
+    <button class="filter-btn" data-filter="pending" onclick="setFilter(this,'pending')">Por visitar</button>
+    <button class="filter-btn" data-filter="visited" onclick="setFilter(this,'visited')">Visitados ✓</button>
+    <button class="filter-btn" data-filter="veg" onclick="setFilter(this,'veg')">Vegetariano 🥗</button>
+    <button class="filter-btn" data-filter="michelin" onclick="setFilter(this,'michelin')">Michelin ⭐</button>
+  </div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label">
+    <span>Progreso de visitas</span>
+    <span id="prog-text">0 / 0</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+</div>
+
+<div class="grid" id="municipios">
+  <div class="loader"><div class="spinner"></div>Cargando municipios…</div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -16,187 +393,278 @@ const supabase = createClient(
   'sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs'
 );
 
-let data = [];
+let allData    = [];
 let map;
-let markers = {};
-let activeMunicipio = null;
+let markers    = {};
+let activeFilter = 'all';
 
+// ── COORDS ──────────────────────────────────────────────
+const COORDS = {
+  "Palma":[39.5696,2.6502],"Sóller":[39.7654,2.7140],"Alcúdia":[39.8420,3.1249],
+  "Pollença":[39.8770,3.0163],"Inca":[39.7189,2.9156],"Manacor":[39.5699,3.2096],
+  "Calvià":[39.5655,2.5040],"Andratx":[39.5753,2.4201],"Santanyí":[39.3555,3.1299],
+  "Artà":[39.6926,3.3497],"Capdepera":[39.7031,3.4348],"Felanitx":[39.4687,3.1485],
+  "Llucmajor":[39.4850,2.8940],"Muro":[39.7356,3.0551],"Sa Pobla":[39.7693,3.0236],
+  "Sineu":[39.6429,3.0106],"Alaró":[39.7069,2.7919],"Algaida":[39.5607,2.8952],
+  "Binissalem":[39.6887,2.8439],"Bunyola":[39.6883,2.6993],"Campanet":[39.7753,2.9666],
+  "Campos":[39.4301,3.0213],"Deià":[39.7485,2.6499],"Esporles":[39.6670,2.5785],
+  "Estellencs":[39.6532,2.4815],"Fornalutx":[39.7825,2.7402],"Lloseta":[39.7173,2.8645],
+  "Llubí":[39.7015,3.0055],"Mancor de la Vall":[39.7503,2.8716],"Maria de la Salut":[39.6644,3.0731],
+  "Montuïri":[39.5687,2.9844],"Petra":[39.6136,3.1126],"Porreres":[39.5144,3.0224],
+  "Selva":[39.7564,2.8980],"Sencelles":[39.6456,2.9035],"Ses Salines":[39.3386,3.0528],
+  "Valldemossa":[39.7119,2.6222],"Vilafranca de Bonany":[39.5683,3.0884],
+  "Puigpunyent":[39.6247,2.5277],"Santa Maria del Camí":[39.6460,2.7740],
+  "Lloret de Vistalegre":[39.6160,3.0050],"Consell":[39.6680,2.8120],
+  "Santa Eugènia":[39.6230,2.8410],"Costitx":[39.6560,2.9490],
+  "Santa Margalida":[39.7020,3.1010],"Ariany":[39.6510,3.1100],
+  "Sant Joan":[39.5890,3.0390],"Sant Llorenç des Cardassar":[39.6080,3.2850],
+  "Son Servera":[39.6200,3.3600],"Banyalbufar":[39.6880,2.5000],
+  "Escorca":[39.8300,2.8700],"Marratxí":[39.6210,2.7260],
+  "Búger":[39.7860,2.9640],"Campanet":[39.7753,2.9666]
+};
+
+// ── VEG DETECTION ────────────────────────────────────────
+// Busca palabras clave vegetarianas EN los textos de restaurantes
+const VEG_KEYWORDS = [
+  'veg', 'vegetar', 'vegano', 'vegan', 'plant', 'ensalad',
+  'organic', 'ecolog', 'opcion veg', 'opciones veg', 'sin carne'
+];
+
+function hasVeg(restaurantes) {
+  if (!restaurantes || restaurantes.length === 0) return false;
+  const joined = restaurantes.join(' ').toLowerCase();
+  return VEG_KEYWORDS.some(k => joined.includes(k));
+}
+
+function getVegRests(restaurantes) {
+  if (!restaurantes) return [];
+  return restaurantes.filter(r =>
+    VEG_KEYWORDS.some(k => r.toLowerCase().includes(k))
+  );
+}
+
+// ── MICHELIN ─────────────────────────────────────────────
+function hasMichelin(restaurantes) {
+  if (!restaurantes) return false;
+  const joined = restaurantes.join(' ').toLowerCase();
+  return joined.includes('michelin') || joined.includes('estrella') || joined.includes('sol repsol');
+}
+
+function isMichelinRest(r) {
+  const t = r.toLowerCase();
+  return t.includes('michelin') || t.includes('estrella') || t.includes('sol repsol');
+}
+
+// ── PARSE FIELD ──────────────────────────────────────────
+// Supabase puede devolver el campo como string JSON o como array ya parseado
+function parseField(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return [val]; }
+  }
+  return [];
+}
+
+// ── MAP ──────────────────────────────────────────────────
 function initMap() {
-  map = L.map('map').setView([39.6, 2.9], 9);
-
+  map = L.map('map', { zoomControl: true }).setView([39.6, 2.9], 9);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+    attribution: '© OpenStreetMap'
   }).addTo(map);
 }
 
-/* ✅ TODOS los municipios */
-function getCoords() {
-  return {
-    "Palma":[39.5696,2.6502],
-    "Sóller":[39.7654,2.7140],
-    "Alcúdia":[39.8420,3.1249],
-    "Pollença":[39.8770,3.0163],
-    "Inca":[39.7189,2.9156],
-    "Manacor":[39.5699,3.2096],
-    "Calvià":[39.5655,2.5040],
-    "Andratx":[39.5753,2.4201],
-    "Santanyí":[39.3555,3.1299],
-    "Artà":[39.6926,3.3497],
-    "Capdepera":[39.7031,3.4348],
-    "Felanitx":[39.4687,3.1485],
-    "Llucmajor":[39.4850,2.8940],
-    "Muro":[39.7356,3.0551],
-    "Sa Pobla":[39.7693,3.0236],
-    "Sineu":[39.6429,3.0106],
-    "Alaró":[39.7069,2.7919],
-    "Algaida":[39.5607,2.8952],
-    "Binissalem":[39.6887,2.8439],
-    "Bunyola":[39.6883,2.6993],
-    "Campanet":[39.7753,2.9666],
-    "Campos":[39.4301,3.0213],
-    "Deià":[39.7485,2.6499],
-    "Esporles":[39.6670,2.5785],
-    "Estellencs":[39.6532,2.4815],
-    "Fornalutx":[39.7825,2.7402],
-    "Lloseta":[39.7173,2.8645],
-    "Llubí":[39.7015,3.0055],
-    "Mancor de la Vall":[39.7503,2.8716],
-    "Maria de la Salut":[39.6644,3.0731],
-    "Montuïri":[39.5687,2.9844],
-    "Petra":[39.6136,3.1126],
-    "Porreres":[39.5144,3.0224],
-    "Selva":[39.7564,2.8980],
-    "Sencelles":[39.6456,2.9035],
-    "Ses Salines":[39.3386,3.0528],
-    "Valldemossa":[39.7119,2.6222],
-    "Vilafranca de Bonany":[39.5683,3.0884],
-    "Puigpunyent":[39.6247,2.5277],
-    "Santa Maria del Camí":[39.6460,2.7740],
-    "Lloret de Vistalegre":[39.6160,3.0050],
-    "Consell":[39.6680,2.8120],
-    "Santa Eugènia":[39.6230,2.8410],
-    "Costitx":[39.6560,2.9490],
-    "Santa Margalida":[39.7020,3.1010],
-    "Ariany":[39.6510,3.1100],
-    "Sant Joan":[39.5890,3.0390],
-    "Sant Llorenç des Cardassar":[39.6080,3.2850],
-    "Son Servera":[39.6200,3.3600],
-    "Banyalbufar":[39.6880,2.5000],
-    "Escorca":[39.8300,2.8700],
-    "Marratxí":[39.6210,2.7260]
-  };
-}
-
-/* 🔥 veg fix */
-function isVeg(text=""){
-  return text.toLowerCase().includes("veg") || text.toLowerCase().includes("vegetar");
-}
-
-async function load(){
-  const { data: res } = await supabase.from('municipios_info').select('*');
-  const { data: checklist } = await supabase.from('checklist_mallorca').select('*');
-
-  const visited = new Map();
-  (checklist||[]).forEach(x => visited.set(x.municipio, x.visitado));
-
-  data = (res||[]).map(m => ({
-    ...m,
-    visitado: visited.get(m.municipio) || false
-  }));
-
-  renderMap();
-  render();
-}
-
-/* MAP */
-function renderMap(){
-  if(!map) initMap();
-
-  const coords = getCoords();
-
+function renderMarkers() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
-  data.forEach(m => {
-    const c = coords[m.municipio];
-    if(!c) return;
+  allData.forEach(m => {
+    const c = COORDS[m.municipio];
+    if (!c) return;
 
-    const marker = L.marker(c).addTo(map);
+    const color = m.visitado ? '#2a9d8f' : '#1a6b7c';
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:12px;height:12px;
+        background:${color};
+        border:2px solid white;
+        border-radius:50%;
+        box-shadow:0 2px 6px rgba(0,0,0,.3);
+      "></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
 
-    marker.on("click", () => focusCard(m.municipio));
-
-    marker.bindPopup(m.municipio);
-
+    const marker = L.marker(c, { icon }).addTo(map);
+    marker.bindPopup(`<b>${m.municipio}</b>`);
+    marker.on('click', () => focusCard(m.municipio));
     markers[m.municipio] = marker;
   });
 }
 
-/* FOCUS */
-window.focusCard = function(name){
-  activeMunicipio = name;
-
-  document.querySelectorAll(".card-item").forEach(c => {
-    const open = c.dataset.name === name;
-    c.classList.toggle("open", open);
-
-    if(open){
-      c.scrollIntoView({behavior:"smooth", block:"start"});
+// ── FOCUS CARD ───────────────────────────────────────────
+window.focusCard = function(name) {
+  // Open the clicked card, close others
+  document.querySelectorAll('.card-item').forEach(c => {
+    if (c.dataset.name === name) {
+      const wasOpen = c.classList.contains('open');
+      c.classList.toggle('open', !wasOpen);
+      if (!wasOpen) {
+        setTimeout(() => c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      }
+    } else {
+      c.classList.remove('open');
     }
   });
 
-  const coords = getCoords()[name];
-  if(coords){
-    map.setView(coords, 12);
+  const c = COORDS[name];
+  if (c) map.setView(c, 12);
+};
+
+// ── TOGGLE VISITED ───────────────────────────────────────
+window.toggleVisited = async function(municipio, val, event) {
+  event.stopPropagation();
+
+  // Optimistic update
+  const m = allData.find(x => x.municipio === municipio);
+  if (m) m.visitado = val;
+  updateStats();
+  renderMarkers();
+
+  const { error } = await supabase
+    .from('checklist_mallorca')
+    .update({ visitado: val })
+    .eq('municipio', municipio);
+
+  if (error) {
+    showToast('❌ Error al guardar');
+    if (m) m.visitado = !val; // revert
+    updateStats();
+  } else {
+    showToast(val ? `✅ ${municipio} visitado!` : `↩️ ${municipio} desmarcado`);
   }
 };
 
-/* TOGGLE */
-window.toggle = async function(municipio, val){
-  await supabase
-    .from('checklist_mallorca')
-    .update({visitado:val})
-    .eq('municipio',municipio);
-
-  load();
+// ── FILTERS ──────────────────────────────────────────────
+window.setFilter = function(btn, filter) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = filter;
+  applyFilters();
 };
 
-/* RENDER */
-function render(){
-  const container = document.getElementById("municipios");
-  container.innerHTML="";
+window.applyFilters = function() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
 
-  data.forEach(m => {
+  let filtered = allData.filter(m => {
+    // Search
+    if (q && !m.municipio.toLowerCase().includes(q) &&
+        !m.descripcion?.toLowerCase().includes(q)) return false;
 
-    const veg = (m.restaurantes||[]).filter(r => isVeg(r));
+    // Filter tabs
+    if (activeFilter === 'visited') return m.visitado;
+    if (activeFilter === 'pending') return !m.visitado;
+    if (activeFilter === 'veg')     return hasVeg(m.restaurantes);
+    if (activeFilter === 'michelin') return hasMichelin(m.restaurantes);
+    return true;
+  });
 
-    const div = document.createElement("div");
-    div.className="card-item";
-    div.dataset.name=m.municipio;
+  renderCards(filtered);
+};
 
-    div.innerHTML=`
-      <div class="title" onclick="focusCard('${m.municipio}')">
-        <input type="checkbox"
-          ${m.visitado?"checked":""}
-          onclick="event.stopPropagation(); toggle('${m.municipio}', this.checked)"
-        />
-        ${m.municipio}
+// ── STATS ────────────────────────────────────────────────
+function updateStats() {
+  const total   = allData.length;
+  const visited = allData.filter(m => m.visitado).length;
+  const vegCount = allData.filter(m => hasVeg(m.restaurantes)).length;
+
+  document.getElementById('stat-total').textContent   = `${total} municipios`;
+  document.getElementById('stat-visited').textContent = `${visited} visitados`;
+  document.getElementById('stat-veg').textContent     = `${vegCount} con opciones 🥗`;
+
+  document.getElementById('prog-text').textContent = `${visited} / ${total}`;
+  document.getElementById('prog-fill').style.width  = total ? `${(visited/total)*100}%` : '0%';
+}
+
+// ── TOAST ────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── RENDER CARDS ─────────────────────────────────────────
+function renderCards(list) {
+  const container = document.getElementById('municipios');
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="big">🔍</div>
+        <div>No se encontraron municipios</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+
+  list.forEach(m => {
+    const lugares      = m.lugares;      // ya parseados en load()
+    const restaurantes = m.restaurantes; // ya parseados en load()
+    const vegRests     = getVegRests(restaurantes);
+    const hasV         = vegRests.length > 0;
+    const hasM         = hasMichelin(restaurantes);
+
+    const div = document.createElement('div');
+    div.className = `card-item${m.visitado ? ' visited' : ''}${hasV ? ' has-veg' : ''}`;
+    div.dataset.name = m.municipio;
+
+    // Badges para restaurantes con clases especiales
+    const restHTML = restaurantes.map(r => {
+      const cls = isMichelinRest(r) ? 'badge rest michelin' : 'badge rest';
+      return `<div class="${cls}">🍴 ${r}</div>`;
+    }).join('');
+
+    // Veg section
+    const vegHTML = hasV
+      ? vegRests.map(v => `<div class="badge veg-badge">🥗 ${v}</div>`).join('')
+      : `<span class="empty-veg">Sin opciones veggie detectadas</span>`;
+
+    div.innerHTML = `
+      <div class="card-header" onclick="focusCard('${m.municipio.replace(/'/g,"\\'")}')">
+        <div class="check-wrap">
+          <input type="checkbox"
+            ${m.visitado ? 'checked' : ''}
+            onclick="toggleVisited('${m.municipio.replace(/'/g,"\\'")}', this.checked, event)"
+          />
+        </div>
+        <div class="card-title">${m.municipio}</div>
+        <div class="card-meta">
+          <div class="veg-dot" title="Tiene opciones vegetarianas"></div>
+          ${hasM ? '<span title="Michelin">⭐</span>' : ''}
+          <span class="chevron">▾</span>
+        </div>
       </div>
 
-      <div class="desc">${m.descripcion||""}</div>
+      <div class="card-body">
+        <div class="desc-text">${m.descripcion || ''}</div>
 
-      <div class="section">
-        <b>Lugares</b>
-        ${(m.lugares||[]).map(l=>`<div class="badge">📍 ${l}</div>`).join("")}
-      </div>
+        ${lugares.length ? `
+        <div class="section-title">📍 Lugares</div>
+        <div class="badges">
+          ${lugares.map(l => `<div class="badge">📍 ${l}</div>`).join('')}
+        </div>` : ''}
 
-      <div class="section">
-        <b>Restaurantes</b>
-        ${(m.restaurantes||[]).map(r=>`<div class="badge">🍴 ${r}</div>`).join("")}
-      </div>
+        ${restaurantes.length ? `
+        <div class="section-title">🍴 Restaurantes</div>
+        <div class="badges">${restHTML}</div>` : ''}
 
-      <div class="section">
-        <b>Vegetarianos</b>
-        ${veg.length ? veg.map(v=>`<div class="badge veg">🥗 ${v}</div>`).join("") : "—"}
+        <div class="section-title">🥗 Opciones vegetarianas</div>
+        <div class="badges">${vegHTML}</div>
       </div>
     `;
 
@@ -204,53 +672,43 @@ function render(){
   });
 }
 
-window.addEventListener("DOMContentLoaded", async()=>{
+// ── LOAD ─────────────────────────────────────────────────
+async function load() {
+  try {
+    const [{ data: res }, { data: checklist }] = await Promise.all([
+      supabase.from('municipios_info').select('*'),
+      supabase.from('checklist_mallorca').select('*')
+    ]);
+
+    const visited = new Map();
+    (checklist || []).forEach(x => visited.set(x.municipio, x.visitado));
+
+    allData = (res || []).map(m => ({
+      ...m,
+      // ✅ FIX: parsear lugares y restaurantes si vienen como string JSON
+      lugares:      parseField(m.lugares),
+      restaurantes: parseField(m.restaurantes),
+      visitado:     visited.get(m.municipio) || false
+    }));
+
+    updateStats();
+    renderMarkers();
+    renderCards(allData);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('municipios').innerHTML = `
+      <div class="empty-state">
+        <div class="big">😕</div>
+        <div>Error al cargar datos</div>
+      </div>`;
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
   initMap();
-  await load();
+  load();
 });
 </script>
-
-<style>
-body{font-family:system-ui;margin:0;background:#eef2f7;padding:20px;}
-.card{max-width:1200px;margin:auto;background:#fff;padding:20px;border-radius:18px;}
-#map{height:350px;border-radius:12px;margin:10px 0;}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;}
-
-.card-item{
-  border:1px solid #eee;
-  border-radius:12px;
-  padding:10px;
-  max-height:60px;
-  overflow:hidden;
-  transition:.3s;
-  cursor:pointer;
-}
-
-.card-item.open{
-  max-height:900px;
-  background:#fff;
-}
-
-.title{font-weight:700;display:flex;gap:8px;}
-.badge{font-size:12px;background:#f3f6ff;padding:6px;margin:4px 0;border-radius:8px;}
-.veg{background:#e7ffe7;}
-.desc{font-size:13px;opacity:.7;}
-
-.tag{
-  font-size:11px;
-  margin-top:10px;
-  opacity:.6;
-}
-</style>
-</head>
-
-<body>
-<div class="card">
-  <h1>🏝️ Mallorca Explorer PRO</h1>
-  <div class="tag">For Jasmin & Adri 🌿</div>
-
-  <div id="map"></div>
-  <div id="municipios" class="grid"></div>
-</div>
 </body>
 </html>
