@@ -17,9 +17,9 @@ const supabase = createClient(
 );
 
 let data = [];
-let filter = "all";
 let map;
 let markers = [];
+let activeMunicipio = null;
 
 /* ---------------- MAP ---------------- */
 function initMap() {
@@ -30,7 +30,7 @@ function initMap() {
   }).addTo(map);
 }
 
-/* ---------------- COORDS (53 municipios) ---------------- */
+/* ---------------- COORDS ---------------- */
 function getCoords() {
   return {
     "Palma":[39.5696,2.6502],
@@ -74,16 +74,12 @@ function getCoords() {
   };
 }
 
-/* ---------------- NORMALIZE RESTAURANTS ---------------- */
-function normalizeRestaurants(rest) {
-  if (!Array.isArray(rest)) return [];
-
-  return rest.map(r => {
-    if (typeof r === "string") {
-      return { nombre: r, rating: null, veg: false };
-    }
-    return r;
-  });
+/* ---------------- NORMALIZE VEG FIX ---------------- */
+function isVeg(r) {
+  if (!r) return false;
+  if (typeof r.veg === "boolean") return r.veg;
+  if (typeof r.veg === "string") return r.veg.toLowerCase() === "true";
+  return false;
 }
 
 /* ---------------- LOAD ---------------- */
@@ -106,7 +102,6 @@ async function load() {
 
     renderMap();
     render();
-
     status.textContent = "Connected ✓";
 
   } catch (err) {
@@ -129,88 +124,97 @@ function renderMap() {
 
     const marker = L.marker(c).addTo(map);
 
-    marker.bindPopup(`
-      <b>${m.municipio}</b><br/>
-      <button onclick="window.focusMunicipio('${m.municipio}')">
-        Ver municipio
-      </button>
-    `);
+    marker.on("click", () => {
+      focusMunicipio(m.municipio);
+    });
 
     markers.push(marker);
   });
 }
 
-/* ---------------- FILTER ---------------- */
-function getFiltered() {
-  if (filter === "visited") return data.filter(x => x.visitado);
-  if (filter === "pending") return data.filter(x => !x.visitado);
-  return data;
-}
+/* ---------------- FOCUS SYSTEM ---------------- */
+window.focusMunicipio = function(name) {
+  activeMunicipio = name;
+  render();
+
+  const el = document.getElementById("card-" + name);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+};
 
 /* ---------------- RENDER ---------------- */
 function render() {
   const container = document.getElementById("municipios");
   container.innerHTML = "";
 
-  const rows = getFiltered();
-
-  rows.forEach(item => {
+  data.forEach(item => {
 
     const lugares = Array.isArray(item.lugares) ? item.lugares : [];
-    const restaurantes = normalizeRestaurants(item.restaurantes);
-    const veg = restaurantes.filter(r => r.veg === true);
+    const restaurantes = Array.isArray(item.restaurantes) ? item.restaurantes : [];
+
+    const veg = restaurantes.filter(isVeg);
+
+    const isOpen = activeMunicipio === item.municipio;
 
     const div = document.createElement("div");
     div.className = "card-item";
 
+    div.id = "card-" + item.municipio;
+
     div.innerHTML = `
-      <div class="title">
+      <div class="title" onclick="focusMunicipio('${item.municipio}')">
         <input type="checkbox"
           ${item.visitado ? "checked" : ""}
-          onchange="toggle(\`${item.municipio}\`, this.checked)"
+          onclick="event.stopPropagation()"
+          onchange="toggle('${item.municipio}', this.checked)"
         />
         ${item.municipio}
       </div>
 
-      <div class="desc">${item.descripcion || ""}</div>
+      <div class="content ${isOpen ? "open" : "collapsed"}">
 
-      <div class="section">
-        <h4>📍 Lugares</h4>
-        ${
-          lugares.length
-            ? lugares.map(l => `
-                <div class="badge">
-                  📌 ${l?.nombre || l} — ${l?.descripcion || ""}
-                </div>
-              `).join("")
-            : "Sin datos"
-        }
-      </div>
+        <div class="desc">${item.descripcion || ""}</div>
 
-      <div class="section">
-        <h4>🍽️ Restaurantes</h4>
-        ${
-          restaurantes.length
-            ? restaurantes.map(r => `
-                <div class="badge">
-                  🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}
-                </div>
-              `).join("")
-            : "Sin datos"
-        }
-      </div>
+        <div class="section">
+          <h4>📍 Lugares</h4>
+          ${
+            lugares.length
+              ? lugares.map(l => `
+                  <div class="badge">
+                    📌 ${l?.nombre || l} — ${l?.descripcion || ""}
+                  </div>
+                `).join("")
+              : "Sin datos"
+          }
+        </div>
 
-      <div class="section">
-        <h4>🌱 Vegetarianos</h4>
-        ${
-          veg.length
-            ? veg.map(v => `
-                <div class="badge veg">
-                  🥗 ${v.nombre} ⭐ ${v.rating ?? "-"}
-                </div>
-              `).join("")
-            : "No hay opciones vegetarianas"
-        }
+        <div class="section">
+          <h4>🍽️ Restaurantes</h4>
+          ${
+            restaurantes.length
+              ? restaurantes.map(r => `
+                  <div class="badge">
+                    🍴 ${r?.nombre || r} ⭐ ${r?.rating ?? "-"}
+                  </div>
+                `).join("")
+              : "Sin datos"
+          }
+        </div>
+
+        <div class="section">
+          <h4>🌱 Vegetarianos</h4>
+          ${
+            veg.length
+              ? veg.map(v => `
+                  <div class="badge veg">
+                    🥗 ${v?.nombre || v} ⭐ ${v?.rating ?? "-"}
+                  </div>
+                `).join("")
+              : "No hay opciones vegetarianas"
+          }
+        </div>
+
       </div>
     `;
 
@@ -241,17 +245,6 @@ window.toggle = async function(municipio, value){
   load();
 };
 
-/* ---------------- MAP CLICK ---------------- */
-window.focusMunicipio = function(name){
-  alert("📍 " + name);
-};
-
-/* ---------------- FILTER ---------------- */
-window.setFilter = (f) => {
-  filter = f;
-  render();
-};
-
 window.addEventListener("DOMContentLoaded", async () => {
   initMap();
   await load();
@@ -266,38 +259,35 @@ body{
   padding:20px;
 }
 
-.card{
-  max-width:1100px;
-  margin:auto;
-  background:#fff;
-  border-radius:18px;
-  padding:20px;
-  box-shadow:0 12px 30px rgba(0,0,0,.08);
-}
-
 #map{
   height:320px;
   border-radius:12px;
   margin:15px 0;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
-  gap:15px;
-}
-
 .card-item{
   border:1px solid #eee;
-  padding:15px;
   border-radius:14px;
+  margin-bottom:10px;
   background:white;
+  overflow:hidden;
 }
 
 .title{
   font-weight:700;
   display:flex;
   gap:10px;
+  padding:10px;
+  cursor:pointer;
+}
+
+.content{
+  padding:10px;
+  transition: all .2s ease;
+}
+
+.collapsed{
+  display:none;
 }
 
 .badge{
@@ -320,17 +310,16 @@ body{
 
 <body>
 
-<div class="card">
-  <h1>🏝️ Mallorca Explorer PRO</h1>
+<h1>🏝️ Mallorca Explorer PRO</h1>
 
-  <div id="counter"></div>
-  <progress id="progress" max="53" value="0"></progress>
+<div id="counter"></div>
+<progress id="progress" max="53" value="0"></progress>
 
-  <div id="map"></div>
+<div id="map"></div>
 
-  <div id="municipios" class="grid"></div>
-  <div id="status">Loading...</div>
-</div>
+<div id="municipios"></div>
+
+<div id="status">Loading...</div>
 
 </body>
 </html>
