@@ -1,121 +1,351 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Municipios de Mallorca</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reto 53 Municipios de Mallorca</title>
+
 <style>
-body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 15px; }
-h1 { margin-bottom: 0; }
-#stats { font-size: 1.1rem; margin: 10px 0 20px; }
-label { display:block; padding: 4px 0; }
-progress { width:100%; height:24px; }
-button { margin-top:15px; }
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#f5f5f5;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
+
+#list{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:10px;
+    margin-top:20px;
+}
+
+.item{
+    background:#fafafa;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:10px;
+}
+
+button{
+    padding:10px 15px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.login-btn{
+    background:#4285f4;
+    color:white;
+}
+
+.logout-btn{
+    background:#e53935;
+    color:white;
+}
+
+progress{
+    width:100%;
+    height:25px;
+}
+
+#user{
+    margin-bottom:15px;
+    font-weight:bold;
+}
+
+.hidden{
+    display:none;
+}
 </style>
-</head>
-<body>
-<h1>Checklist de municipios de Mallorca</h1>
-<div id="stats">0/53 completados (0%)</div>
-<progress id="progress" max="53" value="0"></progress>
-<br><br>
-<label><input type="checkbox" data-name="Alaró"> Alaró</label><br>
-<label><input type="checkbox" data-name="Alcúdia"> Alcúdia</label><br>
-<label><input type="checkbox" data-name="Algaida"> Algaida</label><br>
-<label><input type="checkbox" data-name="Andratx"> Andratx</label><br>
-<label><input type="checkbox" data-name="Ariany"> Ariany</label><br>
-<label><input type="checkbox" data-name="Artà"> Artà</label><br>
-<label><input type="checkbox" data-name="Banyalbufar"> Banyalbufar</label><br>
-<label><input type="checkbox" data-name="Binissalem"> Binissalem</label><br>
-<label><input type="checkbox" data-name="Búger"> Búger</label><br>
-<label><input type="checkbox" data-name="Bunyola"> Bunyola</label><br>
-<label><input type="checkbox" data-name="Calvià"> Calvià</label><br>
-<label><input type="checkbox" data-name="Campanet"> Campanet</label><br>
-<label><input type="checkbox" data-name="Campos"> Campos</label><br>
-<label><input type="checkbox" data-name="Capdepera"> Capdepera</label><br>
-<label><input type="checkbox" data-name="Consell"> Consell</label><br>
-<label><input type="checkbox" data-name="Costitx"> Costitx</label><br>
-<label><input type="checkbox" data-name="Deià"> Deià</label><br>
-<label><input type="checkbox" data-name="Escorca"> Escorca</label><br>
-<label><input type="checkbox" data-name="Esporles"> Esporles</label><br>
-<label><input type="checkbox" data-name="Estellencs"> Estellencs</label><br>
-<label><input type="checkbox" data-name="Felanitx"> Felanitx</label><br>
-<label><input type="checkbox" data-name="Fornalutx"> Fornalutx</label><br>
-<label><input type="checkbox" data-name="Inca"> Inca</label><br>
-<label><input type="checkbox" data-name="Lloret de Vistalegre"> Lloret de Vistalegre</label><br>
-<label><input type="checkbox" data-name="Lloseta"> Lloseta</label><br>
-<label><input type="checkbox" data-name="Llubí"> Llubí</label><br>
-<label><input type="checkbox" data-name="Llucmajor"> Llucmajor</label><br>
-<label><input type="checkbox" data-name="Manacor"> Manacor</label><br>
-<label><input type="checkbox" data-name="Mancor de la Vall"> Mancor de la Vall</label><br>
-<label><input type="checkbox" data-name="Maria de la Salut"> Maria de la Salut</label><br>
-<label><input type="checkbox" data-name="Marratxí"> Marratxí</label><br>
-<label><input type="checkbox" data-name="Montuïri"> Montuïri</label><br>
-<label><input type="checkbox" data-name="Muro"> Muro</label><br>
-<label><input type="checkbox" data-name="Palma"> Palma</label><br>
-<label><input type="checkbox" data-name="Petra"> Petra</label><br>
-<label><input type="checkbox" data-name="Pollença"> Pollença</label><br>
-<label><input type="checkbox" data-name="Porreres"> Porreres</label><br>
-<label><input type="checkbox" data-name="Puigpunyent"> Puigpunyent</label><br>
-<label><input type="checkbox" data-name="Sa Pobla"> Sa Pobla</label><br>
-<label><input type="checkbox" data-name="Sant Joan"> Sant Joan</label><br>
-<label><input type="checkbox" data-name="Sant Llorenç des Cardassar"> Sant Llorenç des Cardassar</label><br>
-<label><input type="checkbox" data-name="Santa Eugènia"> Santa Eugènia</label><br>
-<label><input type="checkbox" data-name="Santa Margalida"> Santa Margalida</label><br>
-<label><input type="checkbox" data-name="Santa Maria del Camí"> Santa Maria del Camí</label><br>
-<label><input type="checkbox" data-name="Santanyí"> Santanyí</label><br>
-<label><input type="checkbox" data-name="Selva"> Selva</label><br>
-<label><input type="checkbox" data-name="Sencelles"> Sencelles</label><br>
-<label><input type="checkbox" data-name="Ses Salines"> Ses Salines</label><br>
-<label><input type="checkbox" data-name="Sineu"> Sineu</label><br>
-<label><input type="checkbox" data-name="Sóller"> Sóller</label><br>
-<label><input type="checkbox" data-name="Son Servera"> Son Servera</label><br>
-<label><input type="checkbox" data-name="Valldemossa"> Valldemossa</label><br>
-<label><input type="checkbox" data-name="Vilafranca de Bonany"> Vilafranca de Bonany</label><br>
-<button id="reset">Reiniciar progreso</button>
 
-<script>
-const STORAGE_KEY = "mallorca_municipios_checklist_v1";
-const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+<script type="module">
 
-function updateStats() {
-  const checked = [...checkboxes].filter(cb => cb.checked).length;
-  document.getElementById("stats").textContent =
-    `${checked}/53 completados (${Math.round(checked/53*100)}%)`;
-  document.getElementById("progress").value = checked;
+import { createClient }
+from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabase = createClient(
+    "https://imizmphocsliukbqvsxe.supabase.co",
+    "sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs"
+);
+
+const municipios = [
+"Alaró","Alcúdia","Algaida","Andratx","Ariany","Artà",
+"Banyalbufar","Binissalem","Búger","Bunyola",
+"Calvià","Campanet","Campos","Capdepera","Consell",
+"Costitx","Deià","Escorca","Esporles","Estellencs",
+"Felanitx","Fornalutx","Inca","Lloret de Vistalegre",
+"Lloseta","Llubí","Llucmajor","Manacor",
+"Mancor de la Vall","Maria de la Salut","Marratxí",
+"Montuïri","Muro","Palma","Petra","Pollença",
+"Porreres","Puigpunyent","Sa Pobla","Sant Joan",
+"Sant Llorenç des Cardassar","Santa Eugènia",
+"Santa Margalida","Santa Maria del Camí","Santanyí",
+"Selva","Sencelles","Ses Salines","Sineu","Sóller",
+"Son Servera","Valldemossa","Vilafranca de Bonany"
+];
+
+let session = null;
+
+window.login = async () => {
+
+    await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+            redirectTo: window.location.origin
+        }
+    });
+
+};
+
+window.logout = async () => {
+
+    await supabase.auth.signOut();
+    location.reload();
+
+};
+
+async function loadSession(){
+
+    const {
+        data: { session: currentSession }
+    } = await supabase.auth.getSession();
+
+    session = currentSession;
+
+    if(!session){
+
+        document
+            .getElementById("loginView")
+            .classList.remove("hidden");
+
+        document
+            .getElementById("appView")
+            .classList.add("hidden");
+
+        return;
+    }
+
+    document
+        .getElementById("loginView")
+        .classList.add("hidden");
+
+    document
+        .getElementById("appView")
+        .classList.remove("hidden");
+
+    document.getElementById("user")
+        .textContent =
+        session.user.email;
+
+    await loadMunicipios();
 }
 
-function save() {
-  const data = [...checkboxes].map(cb => ({
-    name: cb.dataset.name,
-    checked: cb.checked
-  }));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  updateStats();
+async function loadMunicipios(){
+
+    const { data, error } = await supabase
+        .from("municipios_visitados")
+        .select("*");
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    const visitados = {};
+
+    data.forEach(row => {
+        visitados[row.municipio] = row.visitado;
+    });
+
+    renderMunicipios(visitados);
 }
 
-function load() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return updateStats();
+function renderMunicipios(visitados){
 
-  const data = JSON.parse(saved);
-  data.forEach(item => {
-    const cb = document.querySelector(`input[data-name="${CSS.escape(item.name)}"]`);
-    if (cb) cb.checked = item.checked;
-  });
-  updateStats();
+    const list =
+        document.getElementById("list");
+
+    list.innerHTML = "";
+
+    let completados = 0;
+
+    municipios.forEach(nombre => {
+
+        const checked =
+            visitados[nombre] === true;
+
+        if(checked){
+            completados++;
+        }
+
+        const div =
+            document.createElement("div");
+
+        div.className = "item";
+
+        div.innerHTML = `
+            <label>
+                <input
+                    type="checkbox"
+                    data-name="${nombre}"
+                    ${checked ? "checked" : ""}
+                >
+                ${nombre}
+            </label>
+        `;
+
+        list.appendChild(div);
+
+    });
+
+    updateProgress(completados);
+
+    document
+        .querySelectorAll("input[type='checkbox']")
+        .forEach(cb => {
+
+            cb.addEventListener(
+                "change",
+                saveMunicipio
+            );
+
+        });
 }
 
-checkboxes.forEach(cb => cb.addEventListener("change", save));
+function updateProgress(total){
 
-document.getElementById("reset").addEventListener("click", () => {
-  if (confirm("¿Seguro que quieres borrar todo el progreso?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    checkboxes.forEach(cb => cb.checked = false);
-    updateStats();
-  }
-});
+    document.getElementById("count")
+        .textContent =
+        `${total}/53 completados`;
 
-load();
+    document.getElementById("progress")
+        .value = total;
+}
+
+async function saveMunicipio(event){
+
+    const municipio =
+        event.target.dataset.name;
+
+    const visitado =
+        event.target.checked;
+
+    const { error } = await supabase
+        .from("municipios_visitados")
+        .upsert({
+            user_id: session.user.id,
+            municipio,
+            visitado
+        });
+
+    if(error){
+        console.error(error);
+        alert(error.message);
+        return;
+    }
+
+    const total =
+        document.querySelectorAll(
+            "input[type='checkbox']:checked"
+        ).length;
+
+    updateProgress(total);
+}
+
+window.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        await loadSession();
+
+        supabase.auth.onAuthStateChange(
+            async () => {
+
+                await loadSession();
+
+            }
+        );
+
+    }
+);
+
 </script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div id="loginView" class="card">
+
+        <h1>🏝️ Reto 53 Municipios de Mallorca</h1>
+
+        <p>
+            Inicia sesión con Google para guardar
+            tu progreso en la nube.
+        </p>
+
+        <button
+            class="login-btn"
+            onclick="login()">
+            Entrar con Google
+        </button>
+
+    </div>
+
+    <div id="appView" class="card hidden">
+
+        <h1>🏝️ Reto 53 Municipios de Mallorca</h1>
+
+        <div id="user"></div>
+
+        <button
+            class="logout-btn"
+            onclick="logout()">
+            Cerrar sesión
+        </button>
+
+        <br><br>
+
+        <div id="count">
+            0/53 completados
+        </div>
+
+        <br>
+
+        <progress
+            id="progress"
+            value="0"
+            max="53">
+        </progress>
+
+        <div id="list"></div>
+
+    </div>
+
+</div>
+
 </body>
 </html>
