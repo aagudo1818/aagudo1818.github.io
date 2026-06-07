@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mallorca Explorer PRO</title>
 
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -15,26 +22,28 @@ const supabase = createClient(
 
 let data = [];
 let filter = "all";
+let map;
+let markers = [];
 
-/* ---------------- LOAD DATA ---------------- */
+/* ---------------- MAP INIT ---------------- */
+function initMap() {
+  map = L.map('map').setView([39.6, 2.9], 9);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+/* ---------------- LOAD ---------------- */
 async function load() {
   const status = document.getElementById("status");
 
   try {
-    const { data: res, error } = await supabase
-      .from('municipios_info')
-      .select('*');
-
-    const { data: checklist } = await supabase
-      .from('checklist_mallorca')
-      .select('*');
-
-    if (error) throw error;
+    const { data: res } = await supabase.from('municipios_info').select('*');
+    const { data: checklist } = await supabase.from('checklist_mallorca').select('*');
 
     const visitedMap = new Map();
-    (checklist || []).forEach(x => {
-      visitedMap.set(x.municipio, x.visitado);
-    });
+    (checklist || []).forEach(x => visitedMap.set(x.municipio, x.visitado));
 
     data = (res || [])
       .map(m => ({
@@ -43,12 +52,55 @@ async function load() {
       }))
       .sort((a,b)=> a.municipio.localeCompare(b.municipio));
 
+    renderMap();
     render();
     status.textContent = "Connected ✓";
 
   } catch (err) {
     status.textContent = err.message;
   }
+}
+
+/* ---------------- MAP MARKERS ---------------- */
+function renderMap() {
+  if (!map) initMap();
+
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  const coords = getCoords();
+
+  data.forEach(m => {
+    const c = coords[m.municipio];
+    if (!c) return;
+
+    const marker = L.marker(c).addTo(map);
+
+    marker.bindPopup(`
+      <b>${m.municipio}</b><br/>
+      <button onclick="window.focusMunicipio('${m.municipio}')">
+        Ver municipio
+      </button>
+    `);
+
+    markers.push(marker);
+  });
+}
+
+/* coords aproximados */
+function getCoords() {
+  return {
+    "Palma":[39.5696,2.6502],
+    "Sóller":[39.7654,2.7140],
+    "Alcúdia":[39.8420,3.1249],
+    "Deià":[39.7485,2.6499],
+    "Inca":[39.7189,2.9156],
+    "Manacor":[39.5699,3.2096],
+    "Pollença":[39.8770,3.0163],
+    "Calvià":[39.5655,2.5040],
+    "Andratx":[39.5753,2.4201],
+    "Santanyí":[39.3555,3.1299]
+  };
 }
 
 /* ---------------- FILTER ---------------- */
@@ -70,7 +122,7 @@ function render() {
     const lugares = Array.isArray(item.lugares) ? item.lugares : [];
     const restaurantes = Array.isArray(item.restaurantes) ? item.restaurantes : [];
 
-    const veg = restaurantes.filter(r => r.veg === true);
+    const veg = restaurantes.filter(r => r?.veg === true);
 
     const div = document.createElement("div");
     div.className = "card-item";
@@ -84,35 +136,30 @@ function render() {
         ${item.municipio}
       </div>
 
-      <div class="desc">${item.descripcion || "Sin descripción"}</div>
+      <div class="desc">${item.descripcion || ""}</div>
 
       <div class="section">
         <h4>📍 Lugares</h4>
         ${
           lugares.length
-            ? lugares
-                .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||""))
-                .map(l => `
-                  <div class="badge">
-                    📌 ${l.nombre || l} — ${l.descripcion || ""}
-                  </div>
-                `).join("")
+            ? lugares.map(l => `
+                <div class="badge">
+                  📌 ${l?.nombre || l} — ${l?.descripcion || ""}
+                </div>
+              `).join("")
             : "Sin datos"
         }
       </div>
 
       <div class="section">
-        <h4>🍽️ Restaurantes top</h4>
+        <h4>🍽️ Restaurantes</h4>
         ${
           restaurantes.length
-            ? restaurantes
-                .sort((a,b)=> (b.rating||0)-(a.rating||0))
-                .slice(0,5)
-                .map(r => `
-                  <div class="badge">
-                    🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}
-                  </div>
-                `).join("")
+            ? restaurantes.map(r => `
+                <div class="badge">
+                  🍴 ${r?.nombre || "?"} ⭐ ${r?.rating ?? "-"}
+                </div>
+              `).join("")
             : "Sin datos"
         }
       </div>
@@ -150,7 +197,6 @@ function updateCounter() {
 
 /* ---------------- TOGGLE ---------------- */
 window.toggle = async function(municipio, value){
-
   await supabase
     .from('checklist_mallorca')
     .update({ visitado: value })
@@ -159,22 +205,31 @@ window.toggle = async function(municipio, value){
   load();
 };
 
-/* ---------------- FILTER BUTTONS ---------------- */
+/* ---------------- MAP CLICK ---------------- */
+window.focusMunicipio = function(name){
+  filter = "all";
+  render();
+  alert("📍 " + name);
+};
+
+/* ---------------- INIT ---------------- */
 window.setFilter = (f) => {
   filter = f;
   render();
 };
 
-/* ---------------- INIT ---------------- */
-window.addEventListener("DOMContentLoaded", load);
+window.addEventListener("DOMContentLoaded", async () => {
+  initMap();
+  await load();
+});
 </script>
 
 <style>
 body{
   margin:0;
-  font-family: system-ui, Arial;
+  font-family: system-ui;
   background: linear-gradient(135deg,#eef2f7,#dfe9f3);
-  padding:30px;
+  padding:20px;
 }
 
 .card{
@@ -182,114 +237,60 @@ body{
   margin:auto;
   background:#fff;
   border-radius:18px;
-  padding:25px;
+  padding:20px;
   box-shadow:0 12px 30px rgba(0,0,0,.08);
 }
 
-h1{ margin:0; }
-
-.sub{
-  opacity:.7;
-  margin-bottom:10px;
-}
-
-progress{
-  width:100%;
-  height:16px;
-  border-radius:10px;
-}
-
-.tabs{
-  display:flex;
-  gap:10px;
-  margin:15px 0;
-}
-
-.tabs button{
-  border:none;
-  padding:8px 14px;
+#map{
+  height:300px;
   border-radius:12px;
-  cursor:pointer;
-  background:#eee;
-  font-weight:600;
-}
-
-.tabs button:hover{
-  background:#ddd;
+  margin:15px 0;
 }
 
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
   gap:15px;
-  margin-top:15px;
 }
 
 .card-item{
   border:1px solid #eee;
-  border-radius:14px;
   padding:15px;
+  border-radius:14px;
   background:white;
-  transition:.2s;
-}
-
-.card-item:hover{
-  transform:translateY(-3px);
-  box-shadow:0 10px 20px rgba(0,0,0,.08);
 }
 
 .title{
   font-weight:700;
   display:flex;
   gap:10px;
-  align-items:center;
-}
-
-.desc{
-  font-size:13px;
-  opacity:.8;
-  margin-top:5px;
-}
-
-.section{
-  margin-top:10px;
 }
 
 .badge{
   display:block;
-  padding:6px 8px;
+  padding:6px;
   margin:4px 0;
-  border-radius:10px;
   background:#f3f6ff;
+  border-radius:10px;
   font-size:12px;
 }
 
-.veg{
-  background:#e7ffe7;
-}
+.veg{ background:#e7ffe7; }
 
-h4{
-  margin:10px 0 5px;
-  font-size:13px;
-}
+.section{ margin-top:10px; }
 
-#counter{
-  margin:10px 0;
-  font-weight:600;
-}
+.desc{ font-size:13px; opacity:.8; }
 
-#status{
-  margin-top:15px;
-  font-size:12px;
-  opacity:.6;
+.tabs button{
+  margin-right:5px;
 }
 </style>
 </head>
 
 <body>
+
 <div class="card">
   <h1>🏝️ Mallorca Explorer PRO</h1>
-  <div class="sub">Jasmin & Adri ❤️</div>
 
   <div id="counter"></div>
   <progress id="progress" max="53" value="0"></progress>
@@ -300,9 +301,11 @@ h4{
     <button onclick="setFilter('pending')">Por visitar</button>
   </div>
 
-  <div id="municipios" class="grid"></div>
+  <div id="map"></div>
 
+  <div id="municipios" class="grid"></div>
   <div id="status">Loading...</div>
 </div>
+
 </body>
 </html>
