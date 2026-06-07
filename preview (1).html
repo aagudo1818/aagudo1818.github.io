@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Municipios de Mallorca</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 15px; }
+h1 { margin-bottom: 0; }
+#stats { font-size: 1.1rem; margin: 10px 0 20px; }
+label { display:block; padding: 4px 0; }
+progress { width:100%; height:24px; }
+button { margin-top:15px; }
+</style>
+</head>
+<body>
+<h1>Checklist de municipios de Mallorca</h1>
+<div id="stats">0/53 completados (0%)</div>
+<progress id="progress" max="53" value="0"></progress>
+<br><br>
+<label><input type="checkbox" data-name="Alaró"> Alaró</label><br>
+<label><input type="checkbox" data-name="Alcúdia"> Alcúdia</label><br>
+<label><input type="checkbox" data-name="Algaida"> Algaida</label><br>
+<label><input type="checkbox" data-name="Andratx"> Andratx</label><br>
+<label><input type="checkbox" data-name="Ariany"> Ariany</label><br>
+<label><input type="checkbox" data-name="Artà"> Artà</label><br>
+<label><input type="checkbox" data-name="Banyalbufar"> Banyalbufar</label><br>
+<label><input type="checkbox" data-name="Binissalem"> Binissalem</label><br>
+<label><input type="checkbox" data-name="Búger"> Búger</label><br>
+<label><input type="checkbox" data-name="Bunyola"> Bunyola</label><br>
+<label><input type="checkbox" data-name="Calvià"> Calvià</label><br>
+<label><input type="checkbox" data-name="Campanet"> Campanet</label><br>
+<label><input type="checkbox" data-name="Campos"> Campos</label><br>
+<label><input type="checkbox" data-name="Capdepera"> Capdepera</label><br>
+<label><input type="checkbox" data-name="Consell"> Consell</label><br>
+<label><input type="checkbox" data-name="Costitx"> Costitx</label><br>
+<label><input type="checkbox" data-name="Deià"> Deià</label><br>
+<label><input type="checkbox" data-name="Escorca"> Escorca</label><br>
+<label><input type="checkbox" data-name="Esporles"> Esporles</label><br>
+<label><input type="checkbox" data-name="Estellencs"> Estellencs</label><br>
+<label><input type="checkbox" data-name="Felanitx"> Felanitx</label><br>
+<label><input type="checkbox" data-name="Fornalutx"> Fornalutx</label><br>
+<label><input type="checkbox" data-name="Inca"> Inca</label><br>
+<label><input type="checkbox" data-name="Lloret de Vistalegre"> Lloret de Vistalegre</label><br>
+<label><input type="checkbox" data-name="Lloseta"> Lloseta</label><br>
+<label><input type="checkbox" data-name="Llubí"> Llubí</label><br>
+<label><input type="checkbox" data-name="Llucmajor"> Llucmajor</label><br>
+<label><input type="checkbox" data-name="Manacor"> Manacor</label><br>
+<label><input type="checkbox" data-name="Mancor de la Vall"> Mancor de la Vall</label><br>
+<label><input type="checkbox" data-name="Maria de la Salut"> Maria de la Salut</label><br>
+<label><input type="checkbox" data-name="Marratxí"> Marratxí</label><br>
+<label><input type="checkbox" data-name="Montuïri"> Montuïri</label><br>
+<label><input type="checkbox" data-name="Muro"> Muro</label><br>
+<label><input type="checkbox" data-name="Palma"> Palma</label><br>
+<label><input type="checkbox" data-name="Petra"> Petra</label><br>
+<label><input type="checkbox" data-name="Pollença"> Pollença</label><br>
+<label><input type="checkbox" data-name="Porreres"> Porreres</label><br>
+<label><input type="checkbox" data-name="Puigpunyent"> Puigpunyent</label><br>
+<label><input type="checkbox" data-name="Sa Pobla"> Sa Pobla</label><br>
+<label><input type="checkbox" data-name="Sant Joan"> Sant Joan</label><br>
+<label><input type="checkbox" data-name="Sant Llorenç des Cardassar"> Sant Llorenç des Cardassar</label><br>
+<label><input type="checkbox" data-name="Santa Eugènia"> Santa Eugènia</label><br>
+<label><input type="checkbox" data-name="Santa Margalida"> Santa Margalida</label><br>
+<label><input type="checkbox" data-name="Santa Maria del Camí"> Santa Maria del Camí</label><br>
+<label><input type="checkbox" data-name="Santanyí"> Santanyí</label><br>
+<label><input type="checkbox" data-name="Selva"> Selva</label><br>
+<label><input type="checkbox" data-name="Sencelles"> Sencelles</label><br>
+<label><input type="checkbox" data-name="Ses Salines"> Ses Salines</label><br>
+<label><input type="checkbox" data-name="Sineu"> Sineu</label><br>
+<label><input type="checkbox" data-name="Sóller"> Sóller</label><br>
+<label><input type="checkbox" data-name="Son Servera"> Son Servera</label><br>
+<label><input type="checkbox" data-name="Valldemossa"> Valldemossa</label><br>
+<label><input type="checkbox" data-name="Vilafranca de Bonany"> Vilafranca de Bonany</label><br>
+<button id="reset">Reiniciar progreso</button>
+
+<script>
+const STORAGE_KEY = "mallorca_municipios_checklist_v1";
+const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+
+function updateStats() {
+  const checked = [...checkboxes].filter(cb => cb.checked).length;
+  document.getElementById("stats").textContent =
+    `${checked}/53 completados (${Math.round(checked/53*100)}%)`;
+  document.getElementById("progress").value = checked;
+}
+
+function save() {
+  const data = [...checkboxes].map(cb => ({
+    name: cb.dataset.name,
+    checked: cb.checked
+  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  updateStats();
+}
+
+function load() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return updateStats();
+
+  const data = JSON.parse(saved);
+  data.forEach(item => {
+    const cb = document.querySelector(`input[data-name="${CSS.escape(item.name)}"]`);
+    if (cb) cb.checked = item.checked;
+  });
+  updateStats();
+}
+
+checkboxes.forEach(cb => cb.addEventListener("change", save));
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (confirm("¿Seguro que quieres borrar todo el progreso?")) {
+    localStorage.removeItem(STORAGE_KEY);
+    checkboxes.forEach(cb => cb.checked = false);
+    updateStats();
+  }
+});
+
+load();
+</script>
+</body>
+</html>
