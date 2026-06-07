@@ -19,7 +19,7 @@ const supabase = createClient(
 let data = [];
 let map;
 let markers = [];
-let activeMunicipio = null;
+let active = null;
 
 /* ---------------- MAP ---------------- */
 function initMap() {
@@ -30,7 +30,7 @@ function initMap() {
   }).addTo(map);
 }
 
-/* ---------------- COORDS ---------------- */
+/* ---------------- COORDS (53 COMPLETO) ---------------- */
 function getCoords() {
   return {
     "Palma":[39.5696,2.6502],
@@ -70,192 +70,157 @@ function getCoords() {
     "Sencelles":[39.6456,2.9035],
     "Ses Salines":[39.3386,3.0528],
     "Valldemossa":[39.7119,2.6222],
-    "Vilafranca de Bonany":[39.5683,3.0884]
+    "Vilafranca de Bonany":[39.5683,3.0884],
+    "Banyalbufar":[39.6873,2.5116],
+    "Búger":[39.7583,2.9873],
+    "Consell":[39.6683,2.8171],
+    "Costitx":[39.6565,2.9056],
+    "Escorca":[39.8219,2.8855],
+    "Lloret de Vistalegre":[39.6170,2.9745],
+    "Puigpunyent":[39.6253,2.5275],
+    "Santa Eugènia":[39.6232,2.8390],
+    "Santa Maria del Camí":[39.6479,2.7769],
+    "Santa Margalida":[39.7015,3.1019],
+    "Son Servera":[39.6201,3.3609],
+    "Sant Joan":[39.6206,3.0344],
+    "Sant Llorenç des Cardassar":[39.6104,3.2837],
+    "Ariany":[39.6500,3.1100]
   };
 }
 
-/* ---------------- NORMALIZE VEG FIX ---------------- */
-function isVeg(r) {
-  if (!r) return false;
-  if (typeof r.veg === "boolean") return r.veg;
-  if (typeof r.veg === "string") return r.veg.toLowerCase() === "true";
+/* ---------------- SAFE VEG ---------------- */
+function isVeg(r){
+  if(!r) return false;
+  if(typeof r.veg === "boolean") return r.veg;
+  if(typeof r.veg === "string") return r.veg.toLowerCase() === "true";
   return false;
 }
 
 /* ---------------- LOAD ---------------- */
-async function load() {
-  const status = document.getElementById("status");
+async function load(){
+  const { data: res } = await supabase.from('municipios_info').select('*');
+  const { data: check } = await supabase.from('checklist_mallorca').select('*');
 
-  try {
-    const { data: res } = await supabase.from('municipios_info').select('*');
-    const { data: checklist } = await supabase.from('checklist_mallorca').select('*');
+  const mapVisited = new Map();
+  (check || []).forEach(x => mapVisited.set(x.municipio, x.visitado));
 
-    const visitedMap = new Map();
-    (checklist || []).forEach(x => visitedMap.set(x.municipio, x.visitado));
+  data = (res || []).map(m => ({
+    ...m,
+    visitado: mapVisited.get(m.municipio) || false
+  })).sort((a,b)=>a.municipio.localeCompare(b.municipio));
 
-    data = (res || [])
-      .map(m => ({
-        ...m,
-        visitado: visitedMap.get(m.municipio) || false
-      }))
-      .sort((a,b)=> a.municipio.localeCompare(b.municipio));
-
-    renderMap();
-    render();
-    status.textContent = "Connected ✓";
-
-  } catch (err) {
-    status.textContent = err.message;
-  }
+  renderMap();
+  render();
 }
 
 /* ---------------- MAP ---------------- */
-function renderMap() {
-  if (!map) initMap();
+function renderMap(){
+  if(!map) initMap();
 
   const coords = getCoords();
 
-  markers.forEach(m => map.removeLayer(m));
+  markers.forEach(m=>map.removeLayer(m));
   markers = [];
 
-  data.forEach(m => {
+  data.forEach(m=>{
     const c = coords[m.municipio];
-    if (!c) return;
+    if(!c) return;
 
     const marker = L.marker(c).addTo(map);
 
-    marker.on("click", () => {
-      focusMunicipio(m.municipio);
-    });
+    marker.on("click", ()=>focus(m.municipio));
 
     markers.push(marker);
   });
 }
 
-/* ---------------- FOCUS SYSTEM ---------------- */
-window.focusMunicipio = function(name) {
-  activeMunicipio = name;
+/* ---------------- FOCUS ---------------- */
+window.focus = function(name){
+  active = name;
   render();
 
-  const el = document.getElementById("card-" + name);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const el = document.getElementById("card-"+name);
+  if(el){
+    el.scrollIntoView({behavior:"smooth",block:"start"});
   }
 };
 
 /* ---------------- RENDER ---------------- */
-function render() {
-  const container = document.getElementById("municipios");
-  container.innerHTML = "";
+function render(){
+  const box = document.getElementById("list");
+  box.innerHTML = "";
 
-  data.forEach(item => {
+  data.forEach(m=>{
+    const open = active === m.municipio;
 
-    const lugares = Array.isArray(item.lugares) ? item.lugares : [];
-    const restaurantes = Array.isArray(item.restaurantes) ? item.restaurantes : [];
-
+    const restaurantes = Array.isArray(m.restaurantes) ? m.restaurantes : [];
     const veg = restaurantes.filter(isVeg);
 
-    const isOpen = activeMunicipio === item.municipio;
-
     const div = document.createElement("div");
-    div.className = "card-item";
+    div.className = "card";
 
-    div.id = "card-" + item.municipio;
+    div.id = "card-"+m.municipio;
 
     div.innerHTML = `
-      <div class="title" onclick="focusMunicipio('${item.municipio}')">
+      <div class="title" onclick="focus('${m.municipio}')">
         <input type="checkbox"
-          ${item.visitado ? "checked" : ""}
+          ${m.visitado ? "checked":""}
           onclick="event.stopPropagation()"
-          onchange="toggle('${item.municipio}', this.checked)"
+          onchange="toggle('${m.municipio}', this.checked)"
         />
-        ${item.municipio}
+        ${m.municipio}
       </div>
 
-      <div class="content ${isOpen ? "open" : "collapsed"}">
+      <div class="content ${open ? "open":"closed"}">
 
-        <div class="desc">${item.descripcion || ""}</div>
+        <div class="desc">${m.descripcion || ""}</div>
 
-        <div class="section">
-          <h4>📍 Lugares</h4>
-          ${
-            lugares.length
-              ? lugares.map(l => `
-                  <div class="badge">
-                    📌 ${l?.nombre || l} — ${l?.descripcion || ""}
-                  </div>
-                `).join("")
-              : "Sin datos"
-          }
-        </div>
+        <h4>🍽 Restaurantes</h4>
+        ${restaurantes.map(r=>`
+          <div class="item">🍴 ${r.nombre || r} ⭐ ${r.rating ?? "-"}</div>
+        `).join("")}
 
-        <div class="section">
-          <h4>🍽️ Restaurantes</h4>
-          ${
-            restaurantes.length
-              ? restaurantes.map(r => `
-                  <div class="badge">
-                    🍴 ${r?.nombre || r} ⭐ ${r?.rating ?? "-"}
-                  </div>
-                `).join("")
-              : "Sin datos"
-          }
-        </div>
-
-        <div class="section">
-          <h4>🌱 Vegetarianos</h4>
-          ${
-            veg.length
-              ? veg.map(v => `
-                  <div class="badge veg">
-                    🥗 ${v?.nombre || v} ⭐ ${v?.rating ?? "-"}
-                  </div>
-                `).join("")
-              : "No hay opciones vegetarianas"
-          }
-        </div>
+        <h4>🌱 Vegetarianos</h4>
+        ${veg.length ? veg.map(v=>`
+          <div class="item veg">🥗 ${v.nombre || v} ⭐ ${v.rating ?? "-"}</div>
+        `).join("") : "No hay"}
 
       </div>
     `;
 
-    container.appendChild(div);
+    box.appendChild(div);
   });
 
-  updateCounter();
+  update();
 }
 
 /* ---------------- COUNTER ---------------- */
-function updateCounter() {
-  const done = data.filter(x => x.visitado).length;
-
+function update(){
+  const done = data.filter(x=>x.visitado).length;
   document.getElementById("counter").textContent =
-    `${done}/${data.length} municipios visitados`;
-
-  document.getElementById("progress").max = data.length || 1;
-  document.getElementById("progress").value = done;
+    `${done}/${data.length} municipios`;
 }
 
 /* ---------------- TOGGLE ---------------- */
-window.toggle = async function(municipio, value){
-  await supabase
-    .from('checklist_mallorca')
-    .update({ visitado: value })
-    .eq('municipio', municipio);
+window.toggle = async function(m,v){
+  await supabase.from("checklist_mallorca")
+    .update({visitado:v})
+    .eq("municipio",m);
 
   load();
 };
 
-window.addEventListener("DOMContentLoaded", async () => {
+window.addEventListener("DOMContentLoaded", ()=>{
   initMap();
-  await load();
+  load();
 });
 </script>
 
 <style>
 body{
   margin:0;
-  font-family: system-ui;
-  background: linear-gradient(135deg,#eef2f7,#dfe9f3);
+  font-family:system-ui;
+  background:#eef2f7;
   padding:20px;
 }
 
@@ -265,61 +230,51 @@ body{
   margin:15px 0;
 }
 
-.card-item{
-  border:1px solid #eee;
-  border-radius:14px;
-  margin-bottom:10px;
+.card{
   background:white;
+  margin-bottom:10px;
+  border-radius:12px;
   overflow:hidden;
+  border:1px solid #eee;
 }
 
 .title{
+  padding:10px;
   font-weight:700;
   display:flex;
   gap:10px;
-  padding:10px;
   cursor:pointer;
 }
 
 .content{
   padding:10px;
-  transition: all .2s ease;
 }
 
-.collapsed{
-  display:none;
-}
+.closed{ display:none; }
 
-.badge{
-  display:block;
-  padding:6px;
-  margin:4px 0;
-  background:#f3f6ff;
-  border-radius:10px;
+.item{
   font-size:12px;
+  padding:4px 0;
 }
 
 .veg{ background:#e7ffe7; }
 
-.section{ margin-top:10px; }
+.desc{ opacity:.7; font-size:13px; }
 
-.desc{ font-size:13px; opacity:.8; }
+h4{ margin:10px 0 5px; }
 
+#counter{ font-weight:700; margin-bottom:10px; }
 </style>
+
 </head>
 
 <body>
 
-<h1>🏝️ Mallorca Explorer PRO</h1>
-
+<h1>🏝 Mallorca Explorer PRO</h1>
 <div id="counter"></div>
-<progress id="progress" max="53" value="0"></progress>
 
 <div id="map"></div>
-
-<div id="municipios"></div>
-
-<div id="status">Loading...</div>
+<div id="list"></div>
 
 </body>
 </html>
