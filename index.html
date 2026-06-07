@@ -1,293 +1,201 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reto 53 Municipios de Mallorca</title>
+
+<title>Mallorca Municipalities Challenge for Jasmin & Adri</title>
 
 <style>
-*{
-    box-sizing:border-box;
+* {
+    box-sizing: border-box;
 }
 
-body{
-    margin:0;
-    padding:20px;
-    font-family:Arial,sans-serif;
-    background:#f5f5f5;
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
 }
 
-.container{
-    max-width:1000px;
-    margin:auto;
+.container {
+    max-width: 1000px;
+    margin: auto;
 }
 
-h1{
-    text-align:center;
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
-.card{
-    background:white;
-    padding:20px;
-    border-radius:12px;
-    box-shadow:0 2px 10px rgba(0,0,0,.1);
+h1 {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
-#list{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-    gap:10px;
-    margin-top:20px;
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
 }
 
-.item{
-    background:#fafafa;
-    border:1px solid #ddd;
-    border-radius:8px;
-    padding:10px;
+#counter {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    text-align: center;
+    font-weight: bold;
 }
 
-button{
-    padding:10px 15px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
+progress {
+    width: 100%;
+    height: 25px;
 }
 
-.login-btn{
-    background:#4285f4;
-    color:white;
+#municipios {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px,1fr));
+    gap: 10px;
+    margin-top: 25px;
 }
 
-.logout-btn{
-    background:#e53935;
-    color:white;
+.item {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
 }
 
-progress{
-    width:100%;
-    height:25px;
+label {
+    cursor: pointer;
+    display: block;
 }
 
-#user{
-    margin-bottom:15px;
-    font-weight:bold;
-}
-
-.hidden{
-    display:none;
+.status {
+    text-align: center;
+    margin-top: 15px;
+    color: #666;
 }
 </style>
 
 <script type="module">
 
 import { createClient }
-from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const supabase = createClient(
-    "https://imizmphocsliukbqvsxe.supabase.co",
-    "sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs"
+    'https://imizmphocsliukbqvsxe.supabase.co',
+    'sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs'
 );
 
-const municipios = [
-"Alaró","Alcúdia","Algaida","Andratx","Ariany","Artà",
-"Banyalbufar","Binissalem","Búger","Bunyola",
-"Calvià","Campanet","Campos","Capdepera","Consell",
-"Costitx","Deià","Escorca","Esporles","Estellencs",
-"Felanitx","Fornalutx","Inca","Lloret de Vistalegre",
-"Lloseta","Llubí","Llucmajor","Manacor",
-"Mancor de la Vall","Maria de la Salut","Marratxí",
-"Montuïri","Muro","Palma","Petra","Pollença",
-"Porreres","Puigpunyent","Sa Pobla","Sant Joan",
-"Sant Llorenç des Cardassar","Santa Eugènia",
-"Santa Margalida","Santa Maria del Camí","Santanyí",
-"Selva","Sencelles","Ses Salines","Sineu","Sóller",
-"Son Servera","Valldemossa","Vilafranca de Bonany"
-];
-
-let session = null;
-
-window.login = async () => {
-
-    await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-            redirectTo: window.location.origin
-        }
-    });
-
-};
-
-window.logout = async () => {
-
-    await supabase.auth.signOut();
-    location.reload();
-
-};
-
-async function loadSession(){
-
-    const {
-        data: { session: currentSession }
-    } = await supabase.auth.getSession();
-
-    session = currentSession;
-
-    if(!session){
-
-        document
-            .getElementById("loginView")
-            .classList.remove("hidden");
-
-        document
-            .getElementById("appView")
-            .classList.add("hidden");
-
-        return;
-    }
-
-    document
-        .getElementById("loginView")
-        .classList.add("hidden");
-
-    document
-        .getElementById("appView")
-        .classList.remove("hidden");
-
-    document.getElementById("user")
-        .textContent =
-        session.user.email;
-
-    await loadMunicipios();
-}
-
-async function loadMunicipios(){
+async function loadMunicipios() {
 
     const { data, error } = await supabase
-        .from("municipios_visitados")
-        .select("*");
+        .from('checklist_mallorca')
+        .select('*')
+        .order('municipio');
 
-    if(error){
+    if(error) {
         console.error(error);
+        document.getElementById("status").textContent =
+            "Database error: " + error.message;
         return;
     }
 
-    const visitados = {};
-
-    data.forEach(row => {
-        visitados[row.municipio] = row.visitado;
-    });
-
-    renderMunicipios(visitados);
+    render(data);
 }
 
-function renderMunicipios(visitados){
+function render(data) {
 
-    const list =
-        document.getElementById("list");
+    const container =
+        document.getElementById('municipios');
 
-    list.innerHTML = "";
+    container.innerHTML = '';
 
-    let completados = 0;
+    let completed = 0;
 
-    municipios.forEach(nombre => {
+    data.forEach(row => {
 
-        const checked =
-            visitados[nombre] === true;
+        if(row.visitado) completed++;
 
-        if(checked){
-            completados++;
-        }
+        const div = document.createElement('div');
 
-        const div =
-            document.createElement("div");
-
-        div.className = "item";
+        div.className = 'item';
 
         div.innerHTML = `
             <label>
                 <input
                     type="checkbox"
-                    data-name="${nombre}"
-                    ${checked ? "checked" : ""}
+                    data-name="${row.municipio}"
+                    ${row.visitado ? 'checked' : ''}
                 >
-                ${nombre}
+                ${row.municipio}
             </label>
         `;
 
-        list.appendChild(div);
-
+        container.appendChild(div);
     });
 
-    updateProgress(completados);
+    updateProgress(completed);
 
     document
-        .querySelectorAll("input[type='checkbox']")
+        .querySelectorAll('input[type="checkbox"]')
         .forEach(cb => {
 
             cb.addEventListener(
-                "change",
-                saveMunicipio
+                'change',
+                updateMunicipio
             );
 
         });
+
+    document.getElementById("status")
+        .textContent = "Connected to Supabase";
 }
 
-function updateProgress(total){
+function updateProgress(completed) {
 
-    document.getElementById("count")
+    document.getElementById('counter')
         .textContent =
-        `${total}/53 completados`;
+        `${completed}/53 municipalities visited`;
 
-    document.getElementById("progress")
-        .value = total;
+    document.getElementById('progress')
+        .value = completed;
 }
 
-async function saveMunicipio(event){
+async function updateMunicipio(event) {
 
     const municipio =
         event.target.dataset.name;
 
-    const visitado =
+    const checked =
         event.target.checked;
 
     const { error } = await supabase
-        .from("municipios_visitados")
-        .upsert({
-            user_id: session.user.id,
-            municipio,
-            visitado
-        });
+        .from('checklist_mallorca')
+        .update({
+            visitado: checked
+        })
+        .eq('municipio', municipio);
 
-    if(error){
-        console.error(error);
+    if(error) {
         alert(error.message);
+        console.error(error);
         return;
     }
 
     const total =
         document.querySelectorAll(
-            "input[type='checkbox']:checked"
+            'input[type="checkbox"]:checked'
         ).length;
 
     updateProgress(total);
 }
 
 window.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-
-        await loadSession();
-
-        supabase.auth.onAuthStateChange(
-            async () => {
-
-                await loadSession();
-
-            }
-        );
-
-    }
+    'DOMContentLoaded',
+    loadMunicipios
 );
 
 </script>
@@ -298,42 +206,19 @@ window.addEventListener(
 
 <div class="container">
 
-    <div id="loginView" class="card">
+    <div class="card">
 
-        <h1>🏝️ Reto 53 Municipios de Mallorca</h1>
+        <h1>
+            🏝️ Mallorca Municipalities Challenge
+        </h1>
 
-        <p>
-            Inicia sesión con Google para guardar
-            tu progreso en la nube.
-        </p>
-
-        <button
-            class="login-btn"
-            onclick="login()">
-            Entrar con Google
-        </button>
-
-    </div>
-
-    <div id="appView" class="card hidden">
-
-        <h1>🏝️ Reto 53 Municipios de Mallorca</h1>
-
-        <div id="user"></div>
-
-        <button
-            class="logout-btn"
-            onclick="logout()">
-            Cerrar sesión
-        </button>
-
-        <br><br>
-
-        <div id="count">
-            0/53 completados
+        <div class="subtitle">
+            For Jasmin & Adri ❤️
         </div>
 
-        <br>
+        <div id="counter">
+            0/53 municipalities visited
+        </div>
 
         <progress
             id="progress"
@@ -341,7 +226,13 @@ window.addEventListener(
             max="53">
         </progress>
 
-        <div id="list"></div>
+        <div id="municipios"></div>
+
+        <div
+            id="status"
+            class="status">
+            Connecting...
+        </div>
 
     </div>
 
