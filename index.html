@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Mallorca Explorer</title>
+<title>Mallorca Explorer PRO</title>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -16,6 +16,7 @@ const supabase = createClient(
 let data = [];
 let filter = "all";
 
+/* ---------------- LOAD DATA ---------------- */
 async function load() {
   const status = document.getElementById("status");
 
@@ -24,11 +25,11 @@ async function load() {
       .from('municipios_info')
       .select('*');
 
-    if (error) throw error;
-
     const { data: checklist } = await supabase
       .from('checklist_mallorca')
       .select('*');
+
+    if (error) throw error;
 
     const visitedMap = new Map();
     (checklist || []).forEach(x => {
@@ -50,27 +51,26 @@ async function load() {
   }
 }
 
+/* ---------------- FILTER ---------------- */
 function getFiltered() {
   if (filter === "visited") return data.filter(x => x.visitado);
   if (filter === "pending") return data.filter(x => !x.visitado);
   return data;
 }
 
+/* ---------------- RENDER ---------------- */
 function render() {
   const container = document.getElementById("municipios");
   container.innerHTML = "";
 
   const rows = getFiltered();
 
-  rows.forEach(r => {
+  rows.forEach(item => {
 
-    const lugares = (r.lugares || [])
-      .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||""));
+    const lugares = Array.isArray(item.lugares) ? item.lugares : [];
+    const restaurantes = Array.isArray(item.restaurantes) ? item.restaurantes : [];
 
-    const restaurantes = (r.restaurantes || [])
-      .sort((a,b)=> (b.rating||0) - (a.rating||0));
-
-    const veg = restaurantes.filter(x => x.veg);
+    const veg = restaurantes.filter(r => r.veg === true);
 
     const div = document.createElement("div");
     div.className = "card-item";
@@ -78,21 +78,25 @@ function render() {
     div.innerHTML = `
       <div class="title">
         <input type="checkbox"
-          ${r.visitado ? "checked":""}
-          onchange="toggle('${r.municipio}', this.checked)"
+          ${item.visitado ? "checked" : ""}
+          onchange="toggle(\`${item.municipio}\`, this.checked)"
         />
-        ${r.municipio}
+        ${item.municipio}
       </div>
 
-      <div class="desc">${r.descripcion || "Sin descripción"}</div>
+      <div class="desc">${item.descripcion || "Sin descripción"}</div>
 
       <div class="section">
         <h4>📍 Lugares</h4>
         ${
           lugares.length
-            ? lugares.map(l =>
-              `<div class="badge">📌 ${l.nombre} — ${l.descripcion || ""}</div>`
-            ).join("")
+            ? lugares
+                .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||""))
+                .map(l => `
+                  <div class="badge">
+                    📌 ${l.nombre || l} — ${l.descripcion || ""}
+                  </div>
+                `).join("")
             : "Sin datos"
         }
       </div>
@@ -101,9 +105,14 @@ function render() {
         <h4>🍽️ Restaurantes top</h4>
         ${
           restaurantes.length
-            ? restaurantes.slice(0,5).map(r =>
-              `<div class="badge">🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}</div>`
-            ).join("")
+            ? restaurantes
+                .sort((a,b)=> (b.rating||0)-(a.rating||0))
+                .slice(0,5)
+                .map(r => `
+                  <div class="badge">
+                    🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}
+                  </div>
+                `).join("")
             : "Sin datos"
         }
       </div>
@@ -112,9 +121,11 @@ function render() {
         <h4>🌱 Vegetarianos</h4>
         ${
           veg.length
-            ? veg.map(v =>
-              `<div class="badge veg">🥗 ${v.nombre} ⭐ ${v.rating ?? "-"}</div>`
-            ).join("")
+            ? veg.map(v => `
+                <div class="badge veg">
+                  🥗 ${v.nombre} ⭐ ${v.rating ?? "-"}
+                </div>
+              `).join("")
             : "No hay opciones vegetarianas"
         }
       </div>
@@ -126,16 +137,20 @@ function render() {
   updateCounter();
 }
 
+/* ---------------- COUNTER ---------------- */
 function updateCounter() {
   const done = data.filter(x => x.visitado).length;
 
   document.getElementById("counter").textContent =
     `${done}/${data.length} municipios visitados`;
 
+  document.getElementById("progress").max = data.length || 1;
   document.getElementById("progress").value = done;
 }
 
+/* ---------------- TOGGLE ---------------- */
 window.toggle = async function(municipio, value){
+
   await supabase
     .from('checklist_mallorca')
     .update({ visitado: value })
@@ -144,11 +159,13 @@ window.toggle = async function(municipio, value){
   load();
 };
 
+/* ---------------- FILTER BUTTONS ---------------- */
 window.setFilter = (f) => {
   filter = f;
   render();
 };
 
+/* ---------------- INIT ---------------- */
 window.addEventListener("DOMContentLoaded", load);
 </script>
 
@@ -169,9 +186,7 @@ body{
   box-shadow:0 12px 30px rgba(0,0,0,.08);
 }
 
-h1{
-  margin:0;
-}
+h1{ margin:0; }
 
 .sub{
   opacity:.7;
@@ -273,7 +288,7 @@ h4{
 
 <body>
 <div class="card">
-  <h1>🏝️ Mallorca Explorer</h1>
+  <h1>🏝️ Mallorca Explorer PRO</h1>
   <div class="sub">Jasmin & Adri ❤️</div>
 
   <div id="counter"></div>
