@@ -3,240 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Mallorca Municipalities Challenge for Jasmin & Adri</title>
 
-<style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-}
-
-.container {
-    max-width: 1000px;
-    margin: auto;
-}
-
-.card {
-    background: white;
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.subtitle {
-    text-align: center;
-    color: #666;
-    margin-bottom: 25px;
-}
-
-#counter {
-    font-size: 1.2rem;
-    margin-bottom: 10px;
-    text-align: center;
-    font-weight: bold;
-}
-
-progress {
-    width: 100%;
-    height: 25px;
-}
-
-#municipios {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px,1fr));
-    gap: 10px;
-    margin-top: 25px;
-}
-
-.item {
-    background: #fafafa;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-label {
-    cursor: pointer;
-    display: block;
-}
-
-.status {
-    text-align: center;
-    margin-top: 15px;
-    color: #666;
-}
-</style>
-
 <script type="module">
-
-import { createClient }
-from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const supabase = createClient(
-    'https://imizmphocsliukbqvsxe.supabase.co',
-    'sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs'
+  'https://imizmphocsliukbqvsxe.supabase.co',
+  'sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs'
 );
 
-async function loadMunicipios() {
+async function loadData() {
+  const status = document.getElementById('status');
 
+  try {
     const { data, error } = await supabase
-        .from('checklist_mallorca')
-        .select('*')
-        .order('municipio');
+      .from('checklist_mallorca')
+      .select('*');
 
-    if(error) {
-        console.error(error);
-        document.getElementById("status").textContent =
-            "Database error: " + error.message;
-        return;
+    if (error) {
+      status.textContent = 'Supabase error: ' + error.message;
+      console.error(error);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      status.textContent =
+        'No municipalities found in checklist_mallorca table.';
+      return;
     }
 
     render(data);
+    status.textContent = 'Connected ✓';
+  } catch (err) {
+    status.textContent = err.message;
+    console.error(err);
+  }
 }
 
-function render(data) {
+function render(rows) {
+  const container = document.getElementById('municipios');
+  container.innerHTML = '';
 
-    const container =
-        document.getElementById('municipios');
+  let completed = 0;
 
-    container.innerHTML = '';
+  rows.forEach(row => {
+    if (row.visitado) completed++;
 
-    let completed = 0;
+    const div = document.createElement('div');
+    div.className = 'item';
 
-    data.forEach(row => {
+    div.innerHTML = `
+      <label>
+        <input
+          type="checkbox"
+          data-name="${row.municipio}"
+          ${row.visitado ? 'checked' : ''}
+        >
+        ${row.municipio}
+      </label>
+    `;
 
-        if(row.visitado) completed++;
+    container.appendChild(div);
+  });
 
-        const div = document.createElement('div');
+  updateProgress(completed);
 
-        div.className = 'item';
-
-        div.innerHTML = `
-            <label>
-                <input
-                    type="checkbox"
-                    data-name="${row.municipio}"
-                    ${row.visitado ? 'checked' : ''}
-                >
-                ${row.municipio}
-            </label>
-        `;
-
-        container.appendChild(div);
-    });
-
-    updateProgress(completed);
-
-    document
-        .querySelectorAll('input[type="checkbox"]')
-        .forEach(cb => {
-
-            cb.addEventListener(
-                'change',
-                updateMunicipio
-            );
-
-        });
-
-    document.getElementById("status")
-        .textContent = "Connected to Supabase";
+  document.querySelectorAll('input[type="checkbox"]')
+    .forEach(cb => cb.addEventListener('change', save));
 }
 
-function updateProgress(completed) {
+function updateProgress(total) {
+  document.getElementById('counter').textContent =
+    `${total}/53 municipalities visited`;
 
-    document.getElementById('counter')
-        .textContent =
-        `${completed}/53 municipalities visited`;
-
-    document.getElementById('progress')
-        .value = completed;
+  document.getElementById('progress').value = total;
 }
 
-async function updateMunicipio(event) {
+async function save(e) {
+  const municipio = e.target.dataset.name;
+  const visitado = e.target.checked;
 
-    const municipio =
-        event.target.dataset.name;
+  const { error } = await supabase
+    .from('checklist_mallorca')
+    .update({ visitado })
+    .eq('municipio', municipio);
 
-    const checked =
-        event.target.checked;
+  if (error) {
+    alert(error.message);
+    console.error(error);
+    return;
+  }
 
-    const { error } = await supabase
-        .from('checklist_mallorca')
-        .update({
-            visitado: checked
-        })
-        .eq('municipio', municipio);
-
-    if(error) {
-        alert(error.message);
-        console.error(error);
-        return;
-    }
-
-    const total =
-        document.querySelectorAll(
-            'input[type="checkbox"]:checked'
-        ).length;
-
-    updateProgress(total);
+  updateProgress(
+    document.querySelectorAll(
+      'input[type="checkbox"]:checked'
+    ).length
+  );
 }
 
-window.addEventListener(
-    'DOMContentLoaded',
-    loadMunicipios
-);
-
+window.addEventListener('DOMContentLoaded', loadData);
 </script>
 
+<style>
+body{
+  font-family:Arial,sans-serif;
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+  background:#f5f5f5;
+}
+.card{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+}
+#municipios{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:10px;
+}
+.item{
+  border:1px solid #ddd;
+  padding:10px;
+  border-radius:8px;
+}
+progress{
+  width:100%;
+  height:24px;
+}
+</style>
 </head>
 
 <body>
+<div class="card">
+  <h1>🏝️ Mallorca Municipalities Challenge</h1>
+  <p>For Jasmin & Adri ❤️</p>
 
-<div class="container">
+  <div id="counter">0/53 municipalities visited</div>
+  <progress id="progress" max="53" value="0"></progress>
 
-    <div class="card">
+  <br><br>
 
-        <h1>
-            🏝️ Mallorca Municipalities Challenge
-        </h1>
+  <div id="municipios"></div>
 
-        <div class="subtitle">
-            For Jasmin & Adri ❤️
-        </div>
+  <br>
 
-        <div id="counter">
-            0/53 municipalities visited
-        </div>
-
-        <progress
-            id="progress"
-            value="0"
-            max="53">
-        </progress>
-
-        <div id="municipios"></div>
-
-        <div
-            id="status"
-            class="status">
-            Connecting...
-        </div>
-
-    </div>
-
+  <div id="status">Loading...</div>
 </div>
-
 </body>
 </html>
