@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mallorca Explorer PRO</title>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script type="module">
@@ -25,13 +21,69 @@ let filter = "all";
 let map;
 let markers = [];
 
-/* ---------------- MAP INIT ---------------- */
+/* ---------------- MAP ---------------- */
 function initMap() {
   map = L.map('map').setView([39.6, 2.9], 9);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
+}
+
+/* ---------------- COORDS (53 municipios) ---------------- */
+function getCoords() {
+  return {
+    "Palma":[39.5696,2.6502],
+    "Sóller":[39.7654,2.7140],
+    "Alcúdia":[39.8420,3.1249],
+    "Pollença":[39.8770,3.0163],
+    "Inca":[39.7189,2.9156],
+    "Manacor":[39.5699,3.2096],
+    "Calvià":[39.5655,2.5040],
+    "Andratx":[39.5753,2.4201],
+    "Santanyí":[39.3555,3.1299],
+    "Artà":[39.6926,3.3497],
+    "Capdepera":[39.7031,3.4348],
+    "Felanitx":[39.4687,3.1485],
+    "Llucmajor":[39.4850,2.8940],
+    "Muro":[39.7356,3.0551],
+    "Sa Pobla":[39.7693,3.0236],
+    "Sineu":[39.6429,3.0106],
+    "Alaró":[39.7069,2.7919],
+    "Algaida":[39.5607,2.8952],
+    "Binissalem":[39.6887,2.8439],
+    "Bunyola":[39.6883,2.6993],
+    "Campanet":[39.7753,2.9666],
+    "Campos":[39.4301,3.0213],
+    "Deià":[39.7485,2.6499],
+    "Esporles":[39.6670,2.5785],
+    "Estellencs":[39.6532,2.4815],
+    "Fornalutx":[39.7825,2.7402],
+    "Lloseta":[39.7173,2.8645],
+    "Llubí":[39.7015,3.0055],
+    "Mancor de la Vall":[39.7503,2.8716],
+    "Maria de la Salut":[39.6644,3.0731],
+    "Montuïri":[39.5687,2.9844],
+    "Petra":[39.6136,3.1126],
+    "Porreres":[39.5144,3.0224],
+    "Selva":[39.7564,2.8980],
+    "Sencelles":[39.6456,2.9035],
+    "Ses Salines":[39.3386,3.0528],
+    "Valldemossa":[39.7119,2.6222],
+    "Vilafranca de Bonany":[39.5683,3.0884]
+  };
+}
+
+/* ---------------- NORMALIZE RESTAURANTS ---------------- */
+function normalizeRestaurants(rest) {
+  if (!Array.isArray(rest)) return [];
+
+  return rest.map(r => {
+    if (typeof r === "string") {
+      return { nombre: r, rating: null, veg: false };
+    }
+    return r;
+  });
 }
 
 /* ---------------- LOAD ---------------- */
@@ -54,6 +106,7 @@ async function load() {
 
     renderMap();
     render();
+
     status.textContent = "Connected ✓";
 
   } catch (err) {
@@ -61,14 +114,14 @@ async function load() {
   }
 }
 
-/* ---------------- MAP MARKERS ---------------- */
+/* ---------------- MAP ---------------- */
 function renderMap() {
   if (!map) initMap();
 
+  const coords = getCoords();
+
   markers.forEach(m => map.removeLayer(m));
   markers = [];
-
-  const coords = getCoords();
 
   data.forEach(m => {
     const c = coords[m.municipio];
@@ -85,22 +138,6 @@ function renderMap() {
 
     markers.push(marker);
   });
-}
-
-/* coords aproximados */
-function getCoords() {
-  return {
-    "Palma":[39.5696,2.6502],
-    "Sóller":[39.7654,2.7140],
-    "Alcúdia":[39.8420,3.1249],
-    "Deià":[39.7485,2.6499],
-    "Inca":[39.7189,2.9156],
-    "Manacor":[39.5699,3.2096],
-    "Pollença":[39.8770,3.0163],
-    "Calvià":[39.5655,2.5040],
-    "Andratx":[39.5753,2.4201],
-    "Santanyí":[39.3555,3.1299]
-  };
 }
 
 /* ---------------- FILTER ---------------- */
@@ -120,9 +157,8 @@ function render() {
   rows.forEach(item => {
 
     const lugares = Array.isArray(item.lugares) ? item.lugares : [];
-    const restaurantes = Array.isArray(item.restaurantes) ? item.restaurantes : [];
-
-    const veg = restaurantes.filter(r => r?.veg === true);
+    const restaurantes = normalizeRestaurants(item.restaurantes);
+    const veg = restaurantes.filter(r => r.veg === true);
 
     const div = document.createElement("div");
     div.className = "card-item";
@@ -157,7 +193,7 @@ function render() {
           restaurantes.length
             ? restaurantes.map(r => `
                 <div class="badge">
-                  🍴 ${r?.nombre || "?"} ⭐ ${r?.rating ?? "-"}
+                  🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}
                 </div>
               `).join("")
             : "Sin datos"
@@ -207,12 +243,10 @@ window.toggle = async function(municipio, value){
 
 /* ---------------- MAP CLICK ---------------- */
 window.focusMunicipio = function(name){
-  filter = "all";
-  render();
   alert("📍 " + name);
 };
 
-/* ---------------- INIT ---------------- */
+/* ---------------- FILTER ---------------- */
 window.setFilter = (f) => {
   filter = f;
   render();
@@ -242,7 +276,7 @@ body{
 }
 
 #map{
-  height:300px;
+  height:320px;
   border-radius:12px;
   margin:15px 0;
 }
@@ -281,9 +315,6 @@ body{
 
 .desc{ font-size:13px; opacity:.8; }
 
-.tabs button{
-  margin-right:5px;
-}
 </style>
 </head>
 
@@ -294,12 +325,6 @@ body{
 
   <div id="counter"></div>
   <progress id="progress" max="53" value="0"></progress>
-
-  <div class="tabs">
-    <button onclick="setFilter('all')">Todos</button>
-    <button onclick="setFilter('visited')">Visitados</button>
-    <button onclick="setFilter('pending')">Por visitar</button>
-  </div>
 
   <div id="map"></div>
 
