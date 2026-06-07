@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mallorca Municipalities Challenge for Jasmin & Adri</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mallorca Explorer</title>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -13,141 +13,279 @@ const supabase = createClient(
   'sb_publishable_kpZt-um8CiK_Wmaxx22-5g_6EwhTRjs'
 );
 
-async function loadData() {
-  const status = document.getElementById('status');
+let data = [];
+let filter = "all";
+
+async function load() {
+  const status = document.getElementById("status");
 
   try {
-    const { data, error } = await supabase
+    const { data: res, error } = await supabase
+      .from('municipios_info')
+      .select('*');
+
+    if (error) throw error;
+
+    const { data: checklist } = await supabase
       .from('checklist_mallorca')
       .select('*');
 
-    if (error) {
-      status.textContent = 'Supabase error: ' + error.message;
-      console.error(error);
-      return;
-    }
+    const visitedMap = new Map();
+    (checklist || []).forEach(x => {
+      visitedMap.set(x.municipio, x.visitado);
+    });
 
-    if (!data || data.length === 0) {
-      status.textContent =
-        'No municipalities found in checklist_mallorca table.';
-      return;
-    }
+    data = (res || [])
+      .map(m => ({
+        ...m,
+        visitado: visitedMap.get(m.municipio) || false
+      }))
+      .sort((a,b)=> a.municipio.localeCompare(b.municipio));
 
-    render(data);
-    status.textContent = 'Connected ✓';
+    render();
+    status.textContent = "Connected ✓";
+
   } catch (err) {
     status.textContent = err.message;
-    console.error(err);
   }
 }
 
-function render(rows) {
-  const container = document.getElementById('municipios');
-  container.innerHTML = '';
+function getFiltered() {
+  if (filter === "visited") return data.filter(x => x.visitado);
+  if (filter === "pending") return data.filter(x => !x.visitado);
+  return data;
+}
 
-  let completed = 0;
+function render() {
+  const container = document.getElementById("municipios");
+  container.innerHTML = "";
 
-  rows.forEach(row => {
-    if (row.visitado) completed++;
+  const rows = getFiltered();
 
-    const div = document.createElement('div');
-    div.className = 'item';
+  rows.forEach(r => {
+
+    const lugares = (r.lugares || [])
+      .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||""));
+
+    const restaurantes = (r.restaurantes || [])
+      .sort((a,b)=> (b.rating||0) - (a.rating||0));
+
+    const veg = restaurantes.filter(x => x.veg);
+
+    const div = document.createElement("div");
+    div.className = "card-item";
 
     div.innerHTML = `
-      <label>
-        <input
-          type="checkbox"
-          data-name="${row.municipio}"
-          ${row.visitado ? 'checked' : ''}
-        >
-        ${row.municipio}
-      </label>
+      <div class="title">
+        <input type="checkbox"
+          ${r.visitado ? "checked":""}
+          onchange="toggle('${r.municipio}', this.checked)"
+        />
+        ${r.municipio}
+      </div>
+
+      <div class="desc">${r.descripcion || "Sin descripción"}</div>
+
+      <div class="section">
+        <h4>📍 Lugares</h4>
+        ${
+          lugares.length
+            ? lugares.map(l =>
+              `<div class="badge">📌 ${l.nombre} — ${l.descripcion || ""}</div>`
+            ).join("")
+            : "Sin datos"
+        }
+      </div>
+
+      <div class="section">
+        <h4>🍽️ Restaurantes top</h4>
+        ${
+          restaurantes.length
+            ? restaurantes.slice(0,5).map(r =>
+              `<div class="badge">🍴 ${r.nombre} ⭐ ${r.rating ?? "-"}</div>`
+            ).join("")
+            : "Sin datos"
+        }
+      </div>
+
+      <div class="section">
+        <h4>🌱 Vegetarianos</h4>
+        ${
+          veg.length
+            ? veg.map(v =>
+              `<div class="badge veg">🥗 ${v.nombre} ⭐ ${v.rating ?? "-"}</div>`
+            ).join("")
+            : "No hay opciones vegetarianas"
+        }
+      </div>
     `;
 
     container.appendChild(div);
   });
 
-  updateProgress(completed);
-
-  document.querySelectorAll('input[type="checkbox"]')
-    .forEach(cb => cb.addEventListener('change', save));
+  updateCounter();
 }
 
-function updateProgress(total) {
-  document.getElementById('counter').textContent =
-    `${total}/53 municipalities visited`;
+function updateCounter() {
+  const done = data.filter(x => x.visitado).length;
 
-  document.getElementById('progress').value = total;
+  document.getElementById("counter").textContent =
+    `${done}/${data.length} municipios visitados`;
+
+  document.getElementById("progress").value = done;
 }
 
-async function save(e) {
-  const municipio = e.target.dataset.name;
-  const visitado = e.target.checked;
-
-  const { error } = await supabase
+window.toggle = async function(municipio, value){
+  await supabase
     .from('checklist_mallorca')
-    .update({ visitado })
+    .update({ visitado: value })
     .eq('municipio', municipio);
 
-  if (error) {
-    alert(error.message);
-    console.error(error);
-    return;
-  }
+  load();
+};
 
-  updateProgress(
-    document.querySelectorAll(
-      'input[type="checkbox"]:checked'
-    ).length
-  );
-}
+window.setFilter = (f) => {
+  filter = f;
+  render();
+};
 
-window.addEventListener('DOMContentLoaded', loadData);
+window.addEventListener("DOMContentLoaded", load);
 </script>
 
 <style>
 body{
-  font-family:Arial,sans-serif;
-  max-width:1000px;
-  margin:auto;
-  padding:20px;
-  background:#f5f5f5;
+  margin:0;
+  font-family: system-ui, Arial;
+  background: linear-gradient(135deg,#eef2f7,#dfe9f3);
+  padding:30px;
 }
+
 .card{
-  background:white;
-  padding:20px;
-  border-radius:12px;
+  max-width:1100px;
+  margin:auto;
+  background:#fff;
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 12px 30px rgba(0,0,0,.08);
 }
-#municipios{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-  gap:10px;
+
+h1{
+  margin:0;
 }
-.item{
-  border:1px solid #ddd;
-  padding:10px;
-  border-radius:8px;
+
+.sub{
+  opacity:.7;
+  margin-bottom:10px;
 }
+
 progress{
   width:100%;
-  height:24px;
+  height:16px;
+  border-radius:10px;
+}
+
+.tabs{
+  display:flex;
+  gap:10px;
+  margin:15px 0;
+}
+
+.tabs button{
+  border:none;
+  padding:8px 14px;
+  border-radius:12px;
+  cursor:pointer;
+  background:#eee;
+  font-weight:600;
+}
+
+.tabs button:hover{
+  background:#ddd;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:15px;
+  margin-top:15px;
+}
+
+.card-item{
+  border:1px solid #eee;
+  border-radius:14px;
+  padding:15px;
+  background:white;
+  transition:.2s;
+}
+
+.card-item:hover{
+  transform:translateY(-3px);
+  box-shadow:0 10px 20px rgba(0,0,0,.08);
+}
+
+.title{
+  font-weight:700;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.desc{
+  font-size:13px;
+  opacity:.8;
+  margin-top:5px;
+}
+
+.section{
+  margin-top:10px;
+}
+
+.badge{
+  display:block;
+  padding:6px 8px;
+  margin:4px 0;
+  border-radius:10px;
+  background:#f3f6ff;
+  font-size:12px;
+}
+
+.veg{
+  background:#e7ffe7;
+}
+
+h4{
+  margin:10px 0 5px;
+  font-size:13px;
+}
+
+#counter{
+  margin:10px 0;
+  font-weight:600;
+}
+
+#status{
+  margin-top:15px;
+  font-size:12px;
+  opacity:.6;
 }
 </style>
 </head>
 
 <body>
 <div class="card">
-  <h1>🏝️ Mallorca Municipalities Challenge</h1>
-  <p>For Jasmin & Adri ❤️</p>
+  <h1>🏝️ Mallorca Explorer</h1>
+  <div class="sub">Jasmin & Adri ❤️</div>
 
-  <div id="counter">0/53 municipalities visited</div>
+  <div id="counter"></div>
   <progress id="progress" max="53" value="0"></progress>
 
-  <br><br>
+  <div class="tabs">
+    <button onclick="setFilter('all')">Todos</button>
+    <button onclick="setFilter('visited')">Visitados</button>
+    <button onclick="setFilter('pending')">Por visitar</button>
+  </div>
 
-  <div id="municipios"></div>
-
-  <br>
+  <div id="municipios" class="grid"></div>
 
   <div id="status">Loading...</div>
 </div>
